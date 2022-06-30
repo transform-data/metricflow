@@ -26,7 +26,7 @@ class MetricInputMeasure(PydanticCustomInputParser, HashableBaseModel):
     """Provides a pointer to a measure along with metric-specific processing directives"""
 
     name: str
-    # TODO add constraint handling property
+    constraint: Optional[WhereClauseConstraint]
 
     @classmethod
     def _from_yaml_value(cls, input: Any):
