@@ -1,0 +1,26 @@
+data_source:
+  name: shopify_inventory_item
+  owners:
+    - support@transformdata.io
+  sql_table: SHOPIFY.INVENTORY_ITEM ### Update to your opportunities schema.table
+  mutability:
+    type: immutable
+  identifiers:
+    - name: id
+      type: primary
+  dimensions:
+    - name: ds
+      type: time
+      type_params:
+        is_primary: True
+        time_granularity: day
+      expr: created_at::date
+    - name: country_code_of_origin
+      type: categorical
+    - name: province_code_of_origin
+      type: categorical
+  measures:
+    - name: total_cost
+      agg: sum
+      expr: cost
+      create_metric: true

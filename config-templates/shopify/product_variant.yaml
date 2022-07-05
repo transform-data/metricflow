@@ -1,0 +1,32 @@
+data_source:
+  name: shopify_product_variant
+  owners:
+    - support@transformdata.io
+  sql_table: SHOPIFY.PRODUCT_VARIANT ### Update to your opportunities schema.table
+  mutability:
+    type: immutable
+  identifiers:
+    - name: product_id
+      type: primary
+    - name: inventory_item_id
+      type: foreign
+  dimensions:
+    - name: ds
+      type: time
+      type_params:
+        is_primary: True
+        time_granularity: day
+      expr: created_at::date
+  measures:
+    - name: average_product_price
+      agg: average
+      expr: price
+      create_metric: true
+    - name: total_inventory_product_quantity
+      agg: sum
+      expr: inventory_quantity
+      create_metric: true
+    - name: total_inventory_value
+      agg: sum
+      expr: inventory_quantity * price
+      create_metric: true 
