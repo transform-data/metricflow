@@ -138,12 +138,7 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
             logger.info(f"Generating compute metrics node for {metric_spec}")
             metric = self._metric_semantics.get_metric(metric_spec)
 
-            measure_specs = tuple(
-                MeasureSpec(
-                    element_name=x.element_name,
-                )
-                for x in metric.measure_references
-            )
+            measure_specs = self._metric_semantics.measures_for_metric(metric_spec)
 
             logger.info(
                 f"For {metric_spec}, needed measures are:\n" f"{pformat_big_objects(measure_specs=measure_specs)}"
