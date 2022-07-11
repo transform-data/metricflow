@@ -33,11 +33,11 @@ class SqlColumn(FrozenBaseModel):
         return self.table.db_name
 
     @property
-    def schema_name(self) -> Optional[str]:  # noqa: D
+    def schema_name(self) -> str:  # noqa: D
         return self.table.schema_name
 
     @property
-    def table_name(self) -> Optional[str]:  # noqa: D
+    def table_name(self) -> str:  # noqa: D
         return self.table.table_name
 
     @property
