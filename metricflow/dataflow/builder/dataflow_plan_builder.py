@@ -45,7 +45,6 @@ from metricflow.plan_conversion.column_resolver import DefaultColumnAssociationR
 from metricflow.plan_conversion.node_processor import PreDimensionJoinNodeProcessor
 from metricflow.plan_conversion.sql_dataset import SqlDataSet
 from metricflow.plan_conversion.time_spine import TimeSpineSource
-from metricflow.query.query_parser import MetricFlowQueryParser
 from metricflow.specs import (
     MetricSpec,
     LinkableInstanceSpec,
@@ -146,8 +145,8 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
 
             combined_where = query_spec.where_constraint
             if metric.constraint:
-                metric_constraint = MetricFlowQueryParser.convert_to_spec_where_constraint(
-                    self._data_source_semantics, metric.constraint
+                metric_constraint = metric.constraint.to_spec_where_constraint(
+                    data_source_semantics=self._data_source_semantics
                 )
                 if combined_where:
                     combined_where = combined_where.combine(metric_constraint)
