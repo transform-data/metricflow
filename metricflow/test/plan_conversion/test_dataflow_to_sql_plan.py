@@ -41,6 +41,7 @@ from metricflow.specs import (
 )
 from metricflow.sql.optimizer.optimization_levels import SqlQueryOptimizationLevel
 from metricflow.sql.sql_bind_parameters import SqlBindParameters
+from metricflow.test.time.metric_time_dimension import MTD_SPEC_DAY
 from metricflow.time.time_granularity import TimeGranularity
 from metricflow.dataset.data_source_adapter import DataSourceDataSet
 from metricflow.test.fixtures.setup_fixtures import MetricFlowTestSessionState
@@ -1123,6 +1124,29 @@ def test_local_dimension_using_local_identifier(  # noqa: D
                     identifier_links=(LinklessIdentifierSpec(element_name="listing", identifier_links=()),),
                 ),
             ),
+        )
+    )
+
+    convert_and_check(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        dataflow_to_sql_converter=dataflow_to_sql_converter,
+        sql_client=sql_client,
+        node=dataflow_plan.sink_output_nodes[0].parent_node,
+    )
+
+
+def test_measure_constraint(  # noqa: D
+    request: FixtureRequest,
+    mf_test_session_state: MetricFlowTestSessionState,
+    dataflow_plan_builder: DataflowPlanBuilder[DataSourceDataSet],
+    dataflow_to_sql_converter: DataflowToSqlQueryPlanConverter[DataSourceDataSet],
+    sql_client: SqlClient,
+) -> None:
+    dataflow_plan = dataflow_plan_builder.build_plan(
+        MetricFlowQuerySpec(
+            metric_specs=(MetricSpec(element_name="lux_booking_value_rate_expr"),),
+            time_dimension_specs=(MTD_SPEC_DAY,),
         )
     )
 

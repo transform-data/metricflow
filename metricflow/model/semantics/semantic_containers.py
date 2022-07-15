@@ -30,6 +30,7 @@ from metricflow.specs import (
     MeasureReference,
     DimensionReference,
     IdentifierReference,
+    MetricInputMeasureSpec,
     MetricSpec,
     TimeDimensionReference,
 )
@@ -110,16 +111,25 @@ class MetricSemantics:  # noqa: D
         """Return all of the hashes of the metric definitions."""
         return set(self._metric_hashes.values())
 
-    def measures_for_metric(self, metric_spec: MetricSpec) -> Tuple[MeasureSpec, ...]:
+    def measures_for_metric(self, metric_spec: MetricSpec) -> Tuple[MetricInputMeasureSpec, ...]:
         """Return the measure specs required to compute the metric."""
         metric = self.get_metric(metric_spec)
+        input_measure_specs: List[MetricInputMeasureSpec] = []
 
-        return tuple(
-            MeasureSpec(
-                element_name=x.element_name,
+        for input_measure in metric.input_measures:
+            spec_constraint = (
+                input_measure.constraint.to_spec_where_constraint(
+                    data_source_semantics=self._data_source_semantics,
+                )
+                if input_measure.constraint is not None
+                else None
             )
-            for x in metric.measure_references
-        )
+            spec = MetricInputMeasureSpec(
+                measure_spec=MeasureSpec.from_reference(input_measure.measure_reference), constraint=spec_constraint
+            )
+            input_measure_specs.append(spec)
+
+        return tuple(input_measure_specs)
 
     def contains_cumulative_metric(self, metric_specs: Sequence[MetricSpec]) -> bool:
         """Returns true if any of the specs correspond to a cumulative metric."""

@@ -1,0 +1,112 @@
+<DataflowPlan>
+    <WriteToResultDataframeNode>
+        <!-- description = Write to Dataframe -->
+        <!-- node_id = wrd_0 -->
+        <ComputeMetricsNode>
+            <!-- description = Compute Metrics via Expressions -->
+            <!-- node_id = cm_0 -->
+            <!-- metric_spec = MetricSpec(element_name='instant_bookers_ratio') -->
+            <FilterElementsNode>
+                <!-- description =                              -->
+                <!--   Pass Only Elements:                      -->
+                <!--     ['metric_time', 'bookers', 'bookers']  -->
+                <!-- node_id = pfe_3 -->
+                <!-- include_spec =                               -->
+                <!--   {'class': 'TimeDimensionSpec',             -->
+                <!--    'element_name': 'metric_time',            -->
+                <!--    'identifier_links': (),                   -->
+                <!--    'time_granularity': TimeGranularity.DAY}  -->
+                <!-- include_spec = MeasureSpec(element_name='bookers') -->
+                <!-- include_spec = MeasureSpec(element_name='bookers') -->
+                <JoinAggregatedMeasuresByGroupByColumnsNode>
+                    <!-- description = Join Aggregated Measures with Standard Outputs -->
+                    <!-- node_id = jamgc_0 -->
+                    <!-- Join aggregated measure nodes:  = [am_0, am_1] -->
+                    <AggregateMeasuresNode>
+                        <!-- description = Aggregate Measures -->
+                        <!-- node_id = am_0 -->
+                        <FilterElementsNode>
+                            <!-- description =                   -->
+                            <!--   Pass Only Elements:           -->
+                            <!--     ['bookers', 'metric_time']  -->
+                            <!-- node_id = pfe_1 -->
+                            <!-- include_spec = MeasureSpec(element_name='bookers') -->
+                            <!-- include_spec =                               -->
+                            <!--   {'class': 'TimeDimensionSpec',             -->
+                            <!--    'element_name': 'metric_time',            -->
+                            <!--    'identifier_links': (),                   -->
+                            <!--    'time_granularity': TimeGranularity.DAY}  -->
+                            <WhereConstraintNode>
+                                <!-- description = Constrain Output with WHERE -->
+                                <!-- node_id = wcc_0 -->
+                                <!-- where_condition =                                                            -->
+                                <!--   {'class': 'SpecWhereClauseConstraint',                                     -->
+                                <!--    'where_condition': 'is_instant',                                          -->
+                                <!--    'linkable_names': ('is_instant',),                                        -->
+                                <!--    'linkable_spec_set': {'dimension_specs': ({'element_name': 'is_instant',  -->
+                                <!--                                               'identifier_links': ()},),     -->
+                                <!--                          'time_dimension_specs': (),                         -->
+                                <!--                          'identifier_specs': ()},                            -->
+                                <!--    'execution_parameters': {'param_dict': {}}}                               -->
+                                <FilterElementsNode>
+                                    <!-- description =                                 -->
+                                    <!--   Pass Only Elements:                         -->
+                                    <!--     ['bookers', 'is_instant', 'metric_time']  -->
+                                    <!-- node_id = pfe_0 -->
+                                    <!-- include_spec = MeasureSpec(element_name='bookers') -->
+                                    <!-- include_spec =                                                                      -->
+                                    <!--   {'class': 'DimensionSpec', 'element_name': 'is_instant', 'identifier_links': ()}  -->
+                                    <!-- include_spec =                               -->
+                                    <!--   {'class': 'TimeDimensionSpec',             -->
+                                    <!--    'element_name': 'metric_time',            -->
+                                    <!--    'identifier_links': (),                   -->
+                                    <!--    'time_granularity': TimeGranularity.DAY}  -->
+                                    <MetricTimeDimensionTransformNode>
+                                        <!-- description = Metric Time Dimension 'ds' -->
+                                        <!-- node_id = sma_10000 -->
+                                        <!-- aggregation_time_dimension = ds -->
+                                        <ReadSqlSourceNode>
+                                            <!-- description =                                                                           -->
+                                            <!--   Read From DataSourceDataSet(DataSourceReference(data_source_name='bookings_source'))  -->
+                                            <!-- node_id = rss_10009 -->
+                                            <!-- data_set =                                                                    -->
+                                            <!--   DataSourceDataSet(DataSourceReference(data_source_name='bookings_source'))  -->
+                                        </ReadSqlSourceNode>
+                                    </MetricTimeDimensionTransformNode>
+                                </FilterElementsNode>
+                            </WhereConstraintNode>
+                        </FilterElementsNode>
+                    </AggregateMeasuresNode>
+                    <AggregateMeasuresNode>
+                        <!-- description = Aggregate Measures -->
+                        <!-- node_id = am_1 -->
+                        <FilterElementsNode>
+                            <!-- description =                   -->
+                            <!--   Pass Only Elements:           -->
+                            <!--     ['bookers', 'metric_time']  -->
+                            <!-- node_id = pfe_2 -->
+                            <!-- include_spec = MeasureSpec(element_name='bookers') -->
+                            <!-- include_spec =                               -->
+                            <!--   {'class': 'TimeDimensionSpec',             -->
+                            <!--    'element_name': 'metric_time',            -->
+                            <!--    'identifier_links': (),                   -->
+                            <!--    'time_granularity': TimeGranularity.DAY}  -->
+                            <MetricTimeDimensionTransformNode>
+                                <!-- description = Metric Time Dimension 'ds' -->
+                                <!-- node_id = sma_10000 -->
+                                <!-- aggregation_time_dimension = ds -->
+                                <ReadSqlSourceNode>
+                                    <!-- description =                                                                           -->
+                                    <!--   Read From DataSourceDataSet(DataSourceReference(data_source_name='bookings_source'))  -->
+                                    <!-- node_id = rss_10009 -->
+                                    <!-- data_set =                                                                    -->
+                                    <!--   DataSourceDataSet(DataSourceReference(data_source_name='bookings_source'))  -->
+                                </ReadSqlSourceNode>
+                            </MetricTimeDimensionTransformNode>
+                        </FilterElementsNode>
+                    </AggregateMeasuresNode>
+                </JoinAggregatedMeasuresByGroupByColumnsNode>
+            </FilterElementsNode>
+        </ComputeMetricsNode>
+    </WriteToResultDataframeNode>
+</DataflowPlan>

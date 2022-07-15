@@ -1,0 +1,92 @@
+---
+integration_test:
+  name: ratio_with_numerator_constraint_on_local_dimension
+  description: |
+    Tests querying a metric with a measure constraint on a local dimension
+  model: SIMPLE_MODEL
+  required_features: ["FULL_OUTER_JOIN"]
+  metrics: ["instant_booking_fraction_of_max_value"]
+  group_bys: ["metric_time"]
+  check_query: |
+    SELECT
+      a.average_booking_value / b.max_booking_value AS instant_booking_fraction_of_max_value
+      , COALESCE(a.ds, b.ds) AS metric_time
+    FROM (
+      SELECT
+        CAST(AVG(booking_value) AS {{ double_data_type_name }} ) AS average_booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      WHERE is_instant
+      GROUP BY ds
+    ) a
+    JOIN (
+      SELECT
+        CAST(NULLIF(MAX(booking_value), 0) AS {{ double_data_type_name }} ) AS max_booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      GROUP BY ds
+    ) b
+    ON a.ds = b.ds
+---
+integration_test:
+  name: ratio_with_numerator_constraint_on_join_dimension
+  description: |
+    Tests querying a metric with a measure constraint on a dimension requiring a join
+  model: SIMPLE_MODEL
+  required_features: ["FULL_OUTER_JOIN"]
+  metrics: ["lux_booking_fraction_of_max_value"]
+  group_bys: ["metric_time"]
+  check_query: |
+    SELECT
+      a.average_booking_value / b.max_booking_value AS lux_booking_fraction_of_max_value
+      , COALESCE(a.ds, b.ds) AS metric_time
+    FROM (
+      SELECT
+        CAST(AVG(fct_bookings.booking_value) AS {{ double_data_type_name }} ) AS average_booking_value
+        , fct_bookings.ds
+      FROM {{ source_schema }}.fct_bookings fct_bookings
+      LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest listings_latest
+      ON fct_bookings.listing_id = listings_latest.listing_id
+      WHERE listings_latest.is_lux
+      GROUP BY fct_bookings.ds
+    ) a
+    JOIN (
+      SELECT
+        CAST(NULLIF(MAX(booking_value), 0) AS {{ double_data_type_name }} ) AS max_booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      GROUP BY ds
+    ) b
+    ON a.ds = b.ds
+---
+integration_test:
+  name: expr_with_constraint_on_join_dimension
+  description: |
+    Tests querying an expr metric with a measure constraint on a dimension requiring a join
+  model: SIMPLE_MODEL
+  required_features: ["FULL_OUTER_JOIN"]
+  metrics: ["lux_booking_value_rate_expr"]
+  group_bys: ["metric_time"]
+  check_query: |
+    SELECT
+      a.average_booking_value * a.bookings / b.booking_value AS lux_booking_value_rate_expr
+      , COALESCE(a.ds, b.ds) AS metric_time
+    FROM (
+      SELECT
+        CAST(AVG(fct_bookings.booking_value) AS {{ double_data_type_name }} ) AS average_booking_value
+        , SUM(1) AS bookings
+        , fct_bookings.ds
+      FROM {{ source_schema }}.fct_bookings fct_bookings
+      LEFT OUTER JOIN {{ source_schema }}.dim_listings_latest listings_latest
+      ON fct_bookings.listing_id = listings_latest.listing_id
+      WHERE listings_latest.is_lux
+      GROUP BY fct_bookings.ds
+    ) a
+    JOIN (
+      SELECT
+        CAST(NULLIF(SUM(booking_value), 0) AS {{ double_data_type_name }} ) AS booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      GROUP BY ds
+    ) b
+    ON a.ds = b.ds

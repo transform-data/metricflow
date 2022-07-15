@@ -330,3 +330,56 @@ metric:
   type_params:
     numerator: bookings
     denominator: booking_value
+---
+metric:
+  name: instant_booking_fraction_of_max_value
+  description: |
+    Average instant booking value as a ratio of overall max booking value.
+    Tests constrained ratio measure.
+  owners:
+    - support@transformdata.io
+  type: ratio
+  locked_metadata:
+    value_format: '.2%'
+  type_params:
+    numerator:
+      name: average_booking_value
+      constraint: is_instant
+    denominator:
+      name: max_booking_value
+---
+metric:
+  name: lux_booking_fraction_of_max_value
+  description: |
+    Average lux booking value as a ratio of overall max booking value. 
+    Tests constrained ratio measure with external dimension join.
+  owners:
+    - support@transformdata.io
+  type: ratio
+  locked_metadata:
+    value_format: '.2%'
+  type_params:
+    numerator:
+      name: average_booking_value
+      constraint: listing__is_lux_latest
+    denominator:
+      name: max_booking_value
+---
+metric:
+  name: lux_booking_value_rate_expr
+  description: |
+    Lux booking value defined as an expr with lux booking value, lux bookings, and total value as inputs.
+    Tests constrained measure expr metric with external dimension join.
+  owners:
+    - support@transformdata.io
+  type: expr
+  locked_metadata:
+    value_format: '.2%'
+  type_params:
+    expr: "average_booking_value * bookings / NULLIF(booking_value, 0)"
+    measures:
+     - name: average_booking_value
+       constraint: listing__is_lux_latest
+     - name: bookings
+       constraint: listing__is_lux_latest
+     - name: booking_value

@@ -324,6 +324,11 @@ class MeasureSpec(InstanceSpec):  # noqa: D
         """Construct from a name e.g. listing__ds__month."""
         return MeasureSpec(element_name=name)
 
+    @staticmethod
+    def from_reference(reference: MeasureReference) -> MeasureSpec:
+        """Initialize from a measure reference instance"""
+        return MeasureSpec(element_name=reference.element_name)
+
     @property
     def qualified_name(self) -> str:  # noqa: D
         return self.element_name
@@ -433,6 +438,20 @@ class SpecWhereClauseConstraint(FrozenBaseModel):
             linkable_spec_set=LinkableSpecSet.merge([self.linkable_spec_set, other.linkable_spec_set]),
             execution_parameters=SqlBindParameters(param_dict=OrderedDict(new_sql_values)),
         )
+
+
+class MetricInputMeasureSpec(FrozenBaseModel):
+    """The spec for a measure defined as a metric input.
+
+    This is necessary because the MeasureSpec is used as a key linking the measures used in the query
+    to the measures defined in the data sources. Adding metric-specific information, like constraints,
+    causes lookups connecting query -> data source to fail in strange ways. This spec, then, provides
+    both the key (in the form of a MeasureSpec) along with whatever measure-specific attributes
+    a user might specify in a metric definition or query accessing the metric itself.
+    """
+
+    measure_spec: MeasureSpec
+    constraint: Optional[SpecWhereClauseConstraint]
 
 
 class MetricFlowQuerySpec(FrozenBaseModel):
