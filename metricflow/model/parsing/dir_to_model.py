@@ -2,6 +2,7 @@ import logging
 import os
 from dataclasses import dataclass
 from string import Template
+import traceback
 from typing import Optional, Dict, List, Tuple, Union, Type
 
 from jsonschema import exceptions
@@ -243,23 +244,38 @@ def parse_config_yaml(
                     ValidationError(
                         context=context,
                         message=f"YAML document did not conform to metric spec.\nError: {e}",
+                        extra_detail="".join(traceback.format_tb(e.__traceback__)),
                     )
                 )
             # catches exceptions from *.parse_obj calls
             except ParsingException as e:
                 context = FileContext(file_name=ctx.filename, line_number=ctx.start_line)
-                issues.append(ValidationError(context=context, message=str(e)))
+                issues.append(
+                    ValidationError(
+                        context=context,
+                        message=str(e),
+                        extra_detail="".join(traceback.format_tb(e.__traceback__)),
+                    )
+                )
             # general exception for a given document. Basicially we don't want an exception
             # on one document to halt checking the rest of the documents
             except Exception as e:
                 context = FileContext(file_name=ctx.filename, line_number=ctx.start_line)
-                issues.append(ValidationError(context=context, message=str(e)))
+                issues.append(
+                    ValidationError(
+                        context=context,
+                        message=str(e),
+                        extra_detail="".join(traceback.format_tb(e.__traceback__)),
+                    )
+                )
     # If a runtime error occured, we still want this to break things
     except RuntimeError:
         raise
     # Any other error should be handled as an issue
     except Exception as e:
         context = FileContext(file_name=config_yaml.filepath)
-        issues.append(ValidationError(context=context, message=str(e)))
+        issues.append(
+            ValidationError(context=context, message=str(e), extra_detail="".join(traceback.format_tb(e.__traceback__)))
+        )
 
     return (results, issues)

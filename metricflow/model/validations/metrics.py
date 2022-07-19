@@ -78,14 +78,15 @@ class CumulativeMetricRule(ModelValidationRule):
             if metric.type_params.window:
                 try:
                     _, _ = CumulativeMetricWindow.parse(metric.type_params.window.to_string())
-                except ParsingException:
+                except ParsingException as e:
                     issues.append(
                         ValidationError(
                             context=MetricContext(
                                 file_context=FileContext.from_metadata(metadata=metric.metadata),
                                 metric=MetricModelReference(metric_name=metric.name),
                             ),
-                            message=traceback.format_exc(),
+                            message="".join(traceback.format_exception_only(etype=type(e), value=e)),
+                            extra_detail="".join(traceback.format_tb(e.__traceback__)),
                         )
                     )
 

@@ -1,5 +1,6 @@
 import datetime
 import logging
+import traceback
 from typing import List
 from metricflow.instances import MaterializationModelReference
 
@@ -69,6 +70,7 @@ class ValidMaterializationRule(ModelValidationRule):
                     context=context,
                     message=str(err),
                     error_date=datetime.date(2022, 5, 23),
+                    extra_detail="".join(traceback.format_tb(err.__traceback__)),
                 )
             )
 

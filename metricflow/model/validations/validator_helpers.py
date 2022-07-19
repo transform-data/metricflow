@@ -327,7 +327,8 @@ def generate_exception_issue(
     """Generates a validation issue for exceptions"""
     return ValidationError(
         context=context,
-        message=f"An error occured while {what_was_being_done} - {''.join(traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__))}",
+        message=f"An error occured while {what_was_being_done} - {''.join(traceback.format_exception_only(etype=type(e), value=e))}",
+        extra_detail="".join(traceback.format_tb(e.__traceback__)),
     )
 
 
