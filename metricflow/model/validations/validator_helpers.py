@@ -389,5 +389,5 @@ class ModelValidationException(Exception):
     """Exception raised when validation of a model fails."""
 
     def __init__(self, issues: Tuple[ValidationIssueType, ...]) -> None:  # noqa: D
-        issues_str = "\n".join([x.as_readable_str() for x in issues])
+        issues_str = "\n".join([x.as_readable_str(verbose=True) for x in issues])
         super().__init__(f"Error validating model. Issues:\n{issues_str}")
