@@ -629,16 +629,18 @@ def drop_materialization(cfg: CLIContext, materialization_name: str) -> None:
         spinner.warn(f"Materialized table for `{materialization_name}` did not exist, no table was dropped")
 
 
-def _print_issues(issues: ModelValidationResults, show_non_blocking: bool = False) -> None:  # noqa: D
+def _print_issues(
+    issues: ModelValidationResults, show_non_blocking: bool = False, verbose: bool = False
+) -> None:  # noqa: D
     for issue in issues.fatals:
-        print(f"• {issue.as_readable_str()}")
+        print(f"• {issue.as_readable_str(verbose=verbose)}")
     for issue in issues.errors:
-        print(f"• {issue.as_readable_str()}")
+        print(f"• {issue.as_readable_str(verbose=verbose)}")
     if show_non_blocking:
         for issue in issues.future_errors:
-            print(f"• {issue.as_readable_str()}")
+            print(f"• {issue.as_readable_str(verbose=verbose)}")
         for issue in issues.warnings:
-            print(f"• {issue.as_readable_str()}")
+            print(f"• {issue.as_readable_str(verbose=verbose)}")
 
 
 def _run_dw_validations(
@@ -691,11 +693,18 @@ def _data_warehouse_validations_runner(
     help="If specified, skips the data warehouse validations",
 )
 @click.option("--show-all", is_flag=True, default=False, help="If specified, prints warnings and future-errors")
+@click.option(
+    "--verbose-issues", is_flag=True, default=False, help="If specified, prints any extra details issues might have"
+)
 @pass_config
 @exception_handler
 @log_call(module_name=__name__, telemetry_reporter=_telemetry_reporter)
 def validate_configs(
-    cfg: CLIContext, dw_timeout: Optional[int] = None, skip_dw: bool = False, show_all: bool = False
+    cfg: CLIContext,
+    dw_timeout: Optional[int] = None,
+    skip_dw: bool = False,
+    show_all: bool = False,
+    verbose_issues: bool = False,
 ) -> None:
     """Perform validations against the defined model configurations."""
     cfg.verbose = True
@@ -712,7 +721,7 @@ def validate_configs(
         lint_spinner.succeed(f"🎉 Successfully linted config YAML files ({lint_results.summary()})")
     else:
         lint_spinner.fail(f"Breaking issues found in config YAML files ({lint_results.summary()})")
-        _print_issues(lint_results, show_non_blocking=show_all)
+        _print_issues(lint_results, show_non_blocking=show_all, verbose=verbose_issues)
         return
 
     # Parsing Validation
@@ -726,7 +735,7 @@ def validate_configs(
         parsing_spinner.fail(
             f"Breaking issues found when building model from configs ({parsing_result.issues.summary()})"
         )
-        _print_issues(parsing_result.issues, show_non_blocking=show_all)
+        _print_issues(parsing_result.issues, show_non_blocking=show_all, verbose=verbose_issues)
         return
 
     user_model = parsing_result.model
@@ -744,7 +753,7 @@ def validate_configs(
         semantic_spinner.fail(
             f"Breaking issues found when checking semantics of built model ({semantic_result.issues.summary()})"
         )
-        _print_issues(semantic_result.issues, show_non_blocking=show_all)
+        _print_issues(semantic_result.issues, show_non_blocking=show_all, verbose=verbose_issues)
         return
 
     dw_results = ModelValidationResults()
@@ -755,7 +764,7 @@ def validate_configs(
     merged_results = ModelValidationResults.merge(
         [lint_results, parsing_result.issues, semantic_result.issues, dw_results]
     )
-    _print_issues(merged_results, show_non_blocking=show_all)
+    _print_issues(merged_results, show_non_blocking=show_all, verbose=verbose_issues)
 
 
 if __name__ == "__main__":
