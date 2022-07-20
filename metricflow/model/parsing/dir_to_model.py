@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from string import Template
 import traceback
-from typing import Optional, Dict, List, Tuple, Union, Type
+from typing import Optional, Dict, List, Union, Type
 
 from jsonschema import exceptions
 
@@ -46,6 +46,19 @@ class ModelBuildResult:  # noqa: D
     model: UserConfiguredModel
     # Issues found in the model.
     issues: ModelValidationResults = ModelValidationResults()
+
+
+@dataclass(frozen=True)
+class FileParsingResult:
+    """Results of parsing a config file
+
+    Attributes:
+        elements: MetricFlow model elements parsed from the file
+        issues: Issues found when trying to parse the file
+    """
+
+    elements: List[Union[DataSource, Metric, Materialization]]
+    issues: List[ValidationIssueType]
 
 
 def parse_directory_of_yaml_files_to_model(
@@ -121,13 +134,14 @@ def parse_yaml_files_to_model(
     issues: List[ValidationIssueType] = []
 
     for config_file in files:
-        (objects, file_issues) = parse_config_yaml(  # parse config file
+        parsing_result = parse_config_yaml(  # parse config file
             config_file,
             data_source_class=data_source_class,
             metric_class=metric_class,
             materialization_class=materialization_class,
         )
-        for obj in objects:
+        file_issues = parsing_result.issues
+        for obj in parsing_result.elements:
             if isinstance(obj, data_source_class):
                 data_sources.append(obj)
             elif isinstance(obj, metric_class):
@@ -159,7 +173,7 @@ def parse_config_yaml(
     data_source_class: Type[DataSource] = DataSource,
     metric_class: Type[Metric] = Metric,
     materialization_class: Type[Materialization] = Materialization,
-) -> Tuple[List[Union[DataSource, Metric, Materialization]], List[ValidationIssueType]]:
+) -> FileParsingResult:
     """Parses transform config file passed as string - Returns list of model objects"""
     results: List[Union[DataSource, Metric, Materialization]] = []
     ctx: Optional[ParsingContext] = None
@@ -278,4 +292,4 @@ def parse_config_yaml(
             ValidationError(context=context, message=str(e), extra_detail="".join(traceback.format_tb(e.__traceback__)))
         )
 
-    return (results, issues)
+    return FileParsingResult(elements=results, issues=issues)
