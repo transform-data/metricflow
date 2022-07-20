@@ -261,19 +261,11 @@ def parse_config_yaml(
                         extra_detail="".join(traceback.format_tb(e.__traceback__)),
                     )
                 )
-            # catches exceptions from *.parse_obj calls
-            except ParsingException as e:
-                context = FileContext(file_name=ctx.filename, line_number=ctx.start_line)
-                issues.append(
-                    ValidationError(
-                        context=context,
-                        message=str(e),
-                        extra_detail="".join(traceback.format_tb(e.__traceback__)),
-                    )
-                )
-            # general exception for a given document. Basicially we don't want an exception
-            # on one document to halt checking the rest of the documents
-            except Exception as e:
+            # ParsingException: catches exceptions from *.parse_obj calls
+            # Exception: general exception for a given document. Basicially we
+            # don't want an exception on one document to halt checking the rest
+            # of the documents
+            except (ParsingException, Exception) as e:
                 context = FileContext(file_name=ctx.filename, line_number=ctx.start_line)
                 issues.append(
                     ValidationError(
