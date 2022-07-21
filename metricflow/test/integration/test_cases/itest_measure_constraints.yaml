@@ -90,3 +90,32 @@ integration_test:
       GROUP BY ds
     ) b
     ON a.ds = b.ds
+---
+integration_test:
+  name: ratio_with_constraint_and_repeated_measure
+  description: |
+    Tests querying a metric with a measure constraint on a local dimension
+  model: SIMPLE_MODEL
+  required_features: ["FULL_OUTER_JOIN"]
+  metrics: ["instant_booking_value_ratio"]
+  group_bys: ["metric_time"]
+  check_query: |
+    SELECT
+      a.booking_value / b.booking_value AS instant_booking_value_ratio
+      , COALESCE(a.ds, b.ds) AS metric_time
+    FROM (
+      SELECT
+        CAST(SUM(booking_value) AS {{ double_data_type_name }} ) AS booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      WHERE is_instant
+      GROUP BY ds
+    ) a
+    JOIN (
+      SELECT
+        CAST(NULLIF(SUM(booking_value), 0) AS {{ double_data_type_name }} ) AS booking_value
+        , ds
+      FROM {{ source_schema }}.fct_bookings
+      GROUP BY ds
+    ) b
+    ON a.ds = b.ds

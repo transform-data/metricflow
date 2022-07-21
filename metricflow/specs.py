@@ -448,10 +448,19 @@ class MetricInputMeasureSpec(FrozenBaseModel):
     causes lookups connecting query -> data source to fail in strange ways. This spec, then, provides
     both the key (in the form of a MeasureSpec) along with whatever measure-specific attributes
     a user might specify in a metric definition or query accessing the metric itself.
+
+    Note - when specifying a metric comprised of two input instances of the same measure, at least one
+    must have a distinct alias, otherwise SQL exceptions may occur. This should be enforced via validation.
     """
 
     measure_spec: MeasureSpec
     constraint: Optional[SpecWhereClauseConstraint]
+    alias: Optional[str]
+
+    @property
+    def post_aggregation_spec(self) -> MeasureSpec:
+        """Return a MeasureSpec instance representing the post-aggregation spec state for the underlying measure"""
+        return MeasureSpec(element_name=self.alias) if self.alias else self.measure_spec
 
 
 class MetricFlowQuerySpec(FrozenBaseModel):

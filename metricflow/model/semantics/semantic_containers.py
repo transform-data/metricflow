@@ -125,7 +125,9 @@ class MetricSemantics:  # noqa: D
                 else None
             )
             spec = MetricInputMeasureSpec(
-                measure_spec=MeasureSpec.from_reference(input_measure.measure_reference), constraint=spec_constraint
+                measure_spec=MeasureSpec.from_reference(input_measure.measure_reference),
+                constraint=spec_constraint,
+                alias=input_measure.alias,
             )
             input_measure_specs.append(spec)
 

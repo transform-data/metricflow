@@ -30,6 +30,7 @@ from metricflow.specs import (
     IdentifierSpec,
     InstanceSpec,
     MeasureSpec,
+    MetricInputMeasureSpec,
     MetricSpec,
     LinklessIdentifierSpec,
     MetricFlowQuerySpec,
@@ -243,6 +244,7 @@ def test_measure_aggregation_node(  # noqa: D
         element_name="bookers",
     )
     measure_specs: List[InstanceSpec] = [sum_spec, sum_boolean_spec, avg_spec, count_distinct_spec]
+    metric_input_measure_specs = tuple(MetricInputMeasureSpec(measure_spec=x) for x in measure_specs)
 
     measure_source_node = consistent_id_object_repository.simple_model_read_nodes["bookings_source"]
     filtered_measure_node = FilterElementsNode[DataSourceDataSet](
@@ -250,7 +252,9 @@ def test_measure_aggregation_node(  # noqa: D
         include_specs=measure_specs,
     )
 
-    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](filtered_measure_node)
+    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=filtered_measure_node, metric_input_measure_specs=metric_input_measure_specs
+    )
 
     convert_and_check(
         request=request,
@@ -372,6 +376,7 @@ def test_compute_metrics_node(
     measure_spec = MeasureSpec(
         element_name="bookings",
     )
+    metric_input_measure_specs = (MetricInputMeasureSpec(measure_spec=measure_spec),)
     identifier_spec = LinklessIdentifierSpec(element_name="listing", identifier_links=())
     measure_source_node = consistent_id_object_repository.simple_model_read_nodes["bookings_source"]
     filtered_measure_node = FilterElementsNode[DataSourceDataSet](
@@ -399,7 +404,9 @@ def test_compute_metrics_node(
         ],
     )
 
-    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](join_node)
+    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=join_node, metric_input_measure_specs=metric_input_measure_specs
+    )
 
     metric_spec = MetricSpec(element_name="bookings")
     compute_metrics_node = ComputeMetricsNode[DataSourceDataSet](
@@ -426,6 +433,7 @@ def test_compute_metrics_node_simple_expr(
     measure_spec = MeasureSpec(
         element_name="booking_value",
     )
+    metric_input_measure_specs = (MetricInputMeasureSpec(measure_spec=measure_spec),)
     identifier_spec = LinklessIdentifierSpec(element_name="listing", identifier_links=())
     measure_source_node = consistent_id_object_repository.simple_model_read_nodes["bookings_source"]
     filtered_measure_node = FilterElementsNode[DataSourceDataSet](
@@ -453,7 +461,9 @@ def test_compute_metrics_node_simple_expr(
         ],
     )
 
-    aggregated_measures_node = AggregateMeasuresNode[DataSourceDataSet](join_node)
+    aggregated_measures_node = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=join_node, metric_input_measure_specs=metric_input_measure_specs
+    )
     metric_spec = MetricSpec(element_name="booking_fees")
     compute_metrics_node = ComputeMetricsNode[DataSourceDataSet](
         parent_node=aggregated_measures_node, metric_specs=[metric_spec]
@@ -498,6 +508,10 @@ def test_compute_metrics_node_ratio_from_single_data_source(
     denominator_spec = MeasureSpec(
         element_name="bookers",
     )
+    metric_input_measure_specs = (
+        MetricInputMeasureSpec(measure_spec=numerator_spec),
+        MetricInputMeasureSpec(measure_spec=denominator_spec),
+    )
     identifier_spec = LinklessIdentifierSpec(element_name="listing", identifier_links=())
     measure_source_node = consistent_id_object_repository.simple_model_read_nodes["bookings_source"]
     filtered_measures_node = FilterElementsNode[DataSourceDataSet](
@@ -525,7 +539,9 @@ def test_compute_metrics_node_ratio_from_single_data_source(
         ],
     )
 
-    aggregated_measures_node = AggregateMeasuresNode[DataSourceDataSet](join_node)
+    aggregated_measures_node = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=join_node, metric_input_measure_specs=metric_input_measure_specs
+    )
     metric_spec = MetricSpec(element_name="bookings_per_booker")
     compute_metrics_node = ComputeMetricsNode[DataSourceDataSet](
         parent_node=aggregated_measures_node, metric_specs=[metric_spec]
@@ -590,6 +606,7 @@ def test_order_by_node(
     measure_spec = MeasureSpec(
         element_name="bookings",
     )
+    metric_input_measure_specs = (MetricInputMeasureSpec(measure_spec=measure_spec),)
 
     dimension_spec = DimensionSpec(
         element_name="is_instant",
@@ -606,7 +623,9 @@ def test_order_by_node(
         parent_node=measure_source_node, include_specs=[measure_spec, dimension_spec, time_dimension_spec]
     )
 
-    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](filtered_measure_node)
+    aggregated_measure_node = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=filtered_measure_node, metric_input_measure_specs=metric_input_measure_specs
+    )
 
     metric_spec = MetricSpec(element_name="bookings")
     compute_metrics_node = ComputeMetricsNode[DataSourceDataSet](
@@ -1146,6 +1165,29 @@ def test_measure_constraint(  # noqa: D
     dataflow_plan = dataflow_plan_builder.build_plan(
         MetricFlowQuerySpec(
             metric_specs=(MetricSpec(element_name="lux_booking_value_rate_expr"),),
+            time_dimension_specs=(MTD_SPEC_DAY,),
+        )
+    )
+
+    convert_and_check(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        dataflow_to_sql_converter=dataflow_to_sql_converter,
+        sql_client=sql_client,
+        node=dataflow_plan.sink_output_nodes[0].parent_node,
+    )
+
+
+def test_measure_constraint_with_reused_measure(  # noqa: D
+    request: FixtureRequest,
+    mf_test_session_state: MetricFlowTestSessionState,
+    dataflow_plan_builder: DataflowPlanBuilder[DataSourceDataSet],
+    dataflow_to_sql_converter: DataflowToSqlQueryPlanConverter[DataSourceDataSet],
+    sql_client: SqlClient,
+) -> None:
+    dataflow_plan = dataflow_plan_builder.build_plan(
+        MetricFlowQuerySpec(
+            metric_specs=(MetricSpec(element_name="instant_booking_value_ratio"),),
             time_dimension_specs=(MTD_SPEC_DAY,),
         )
     )

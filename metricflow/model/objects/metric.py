@@ -23,10 +23,15 @@ class MetricType(ExtendedEnum):
 
 
 class MetricInputMeasure(PydanticCustomInputParser, HashableBaseModel):
-    """Provides a pointer to a measure along with metric-specific processing directives"""
+    """Provides a pointer to a measure along with metric-specific processing directives
+
+    If an alias is set, this will be used as the string name reference for this measure after the aggregation
+    phase in the SQL plan.
+    """
 
     name: str
     constraint: Optional[WhereClauseConstraint]
+    alias: Optional[str]
 
     @classmethod
     def _from_yaml_value(cls, input: Any):
@@ -58,6 +63,11 @@ class MetricInputMeasure(PydanticCustomInputParser, HashableBaseModel):
     def measure_reference(self) -> MeasureReference:
         """Property accessor to get the MeasureReference associated with this metric input measure"""
         return MeasureReference(element_name=self.name)
+
+    @property
+    def post_aggregation_measure_reference(self) -> MeasureReference:
+        """Property accessor to get the MeasureReference with the aliased name, if appropriate"""
+        return MeasureReference(element_name=self.alias or self.name)
 
 
 class CumulativeMetricWindow(PydanticCustomInputParser, HashableBaseModel):

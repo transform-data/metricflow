@@ -383,3 +383,21 @@ metric:
      - name: bookings
        constraint: listing__is_lux_latest
      - name: booking_value
+---
+metric:
+  name: instant_booking_value_ratio
+  description: |
+    Instant booking value defined as a ratio metric of instant booking value / booking value
+    Tests constrained measure ratio metric with re-use of the same base measure
+  owners:
+    - support@transformdata.io
+  type: ratio
+  locked_metadata:
+    value_format: '.2%'
+  type_params:
+    numerator:
+      name: booking_value
+      constraint: is_instant
+      alias: booking_value_with_is_instant_constraint
+    denominator:
+      name: booking_value

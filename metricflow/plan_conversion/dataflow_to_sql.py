@@ -40,6 +40,7 @@ from metricflow.model.objects.metric import CumulativeMetricWindow, MetricType
 from metricflow.model.semantic_model import SemanticModel
 from metricflow.object_utils import assert_values_exhausted
 from metricflow.plan_conversion.instance_converters import (
+    AliasAggregatedMeasures,
     RemoveMeasures,
     AddMetrics,
     CreateSelectColumnsForInstances,
@@ -839,7 +840,20 @@ class DataflowToSqlQueryPlanConverter(Generic[SqlDataSetT], DataflowPlanNodeVisi
         )
 
     def visit_aggregate_measures_node(self, node: AggregateMeasuresNode) -> SqlDataSet:
-        """Generates the query that realizes the behavior of AggregateMeasuresNode."""
+        """Generates the query that realizes the behavior of AggregateMeasuresNode.
+
+        This will produce a query that aggregates all measures from a given input data source per the
+        measure spec
+
+        In the event the input aggregations are applied to measures with aliases set, in case of, e.g.,
+        a constraint applied to one instance of the measure but not another one, this method will
+        apply the rename in the select statement for this node, and propagate that further along via an
+        instance set transform to rename the measures.
+
+        Any node operating on the output of this node will need to use the measure aliases instead of
+        the measure names as references.
+
+        """
         # Get the data from the parent, and change measure instances to the aggregated state.
         from_data_set: SqlDataSet = node.parent_node.accept(self)
         aggregated_instance_set = from_data_set.instance_set.transform(
@@ -858,15 +872,31 @@ class DataflowToSqlQueryPlanConverter(Generic[SqlDataSetT], DataflowPlanNodeVisi
 
         from_data_set_alias = self._next_unique_table_alias()
 
-        # The call below does a few things, but there are a few function calls that convert the instance set into
-        # SQL query plan objects.
+        # Convert the instance set into a set of select column statements with updated aliases
+        # Note any measure with an alias requirement will be recast at this point, and
+        # downstream consumers of the resulting node must therefore request aggregated measures
+        # by their appropriate aliases
         select_column_set: SelectColumnSet = aggregated_instance_set.transform(
             CreateSelectColumnsWithMeasuresAggregated(
-                from_data_set_alias,
-                self._column_association_resolver,
-                self._data_source_semantics,
+                table_alias=from_data_set_alias,
+                column_resolver=self._column_association_resolver,
+                data_source_semantics=self._data_source_semantics,
+                metric_input_measure_specs=node.metric_input_measure_specs,
             )
         )
+
+        if any((spec.alias for spec in node.metric_input_measure_specs)):
+            # This is a little silly, but we need to update the column instance set with the new aliases
+            # There are a number of refactoring options - simplest is to consolidate this with
+            # ChangeMeasureAggregationState, assuming there are no ordering dependencies up above
+            aggregated_instance_set = aggregated_instance_set.transform(
+                AliasAggregatedMeasures(metric_input_measure_specs=node.metric_input_measure_specs)
+            )
+            # and make sure we follow the resolver format for any newly aliased measures....
+            aggregated_instance_set = aggregated_instance_set.transform(
+                ChangeAssociatedColumns(self._column_association_resolver)
+            )
+
         return SqlDataSet(
             instance_set=aggregated_instance_set,
             sql_select_node=SqlSelectStatementNode(
@@ -910,16 +940,16 @@ class DataflowToSqlQueryPlanConverter(Generic[SqlDataSetT], DataflowPlanNodeVisi
 
             metric_expr: Optional[SqlExpressionNode] = None
             if metric.type is MetricType.RATIO:
-                numerator = metric.type_params.numerator_measure_reference
-                denominator = metric.type_params.denominator_measure_reference
+                numerator = metric.type_params.numerator
+                denominator = metric.type_params.denominator
                 assert (
                     numerator is not None and denominator is not None
                 ), "Missing numerator or denominator for ratio metric, this should have been caught in validation!"
                 numerator_column_name = self._column_association_resolver.resolve_measure_spec(
-                    MeasureSpec(element_name=numerator.element_name)
+                    MeasureSpec(element_name=numerator.post_aggregation_measure_reference.element_name)
                 ).column_name
                 denominator_column_name = self._column_association_resolver.resolve_measure_spec(
-                    MeasureSpec(element_name=denominator.element_name)
+                    MeasureSpec(element_name=denominator.post_aggregation_measure_reference.element_name)
                 ).column_name
 
                 metric_expr = SqlRatioComputationExpression(
@@ -937,12 +967,14 @@ class DataflowToSqlQueryPlanConverter(Generic[SqlDataSetT], DataflowPlanNodeVisi
                     ),
                 )
             elif metric.type is MetricType.MEASURE_PROXY:
-                if len(metric.measure_references) > 0:
+                if len(metric.input_measures) > 0:
                     assert (
-                        len(metric.measure_references) == 1
+                        len(metric.input_measures) == 1
                     ), "Measure proxy metrics should always source from exactly 1 measure."
                     expr = self._column_association_resolver.resolve_measure_spec(
-                        MeasureSpec(element_name=metric.measure_references[0].element_name)
+                        MeasureSpec(
+                            element_name=metric.input_measures[0].post_aggregation_measure_reference.element_name
+                        )
                     ).column_name
                 else:
                     expr = metric.name
@@ -958,7 +990,7 @@ class DataflowToSqlQueryPlanConverter(Generic[SqlDataSetT], DataflowPlanNodeVisi
                     len(metric.measure_references) == 1
                 ), "Cumulative metrics should always source from exactly 1 measure."
                 expr = self._column_association_resolver.resolve_measure_spec(
-                    MeasureSpec(element_name=metric.measure_references[0].element_name)
+                    MeasureSpec(element_name=metric.input_measures[0].post_aggregation_measure_reference.element_name)
                 ).column_name
                 metric_expr = SqlColumnReferenceExpression(
                     SqlColumnReference(

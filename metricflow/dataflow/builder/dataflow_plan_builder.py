@@ -489,7 +489,7 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
         """
         output_nodes: List[BaseOutput[SqlDataSetT]] = []
         data_sources_and_constraints_to_measures: DefaultDict[
-            tuple[str, Optional[SpecWhereClauseConstraint]], List[MeasureSpec]
+            tuple[str, Optional[SpecWhereClauseConstraint]], List[MetricInputMeasureSpec]
         ] = collections.defaultdict(list)
         for input_spec in metric_input_measure_specs:
             data_source_names = [
@@ -501,9 +501,7 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
             assert (
                 len(data_source_names) == 1
             ), f"Validation should enforce one data source per measure, but found {data_source_names} for {input_spec}!"
-            data_sources_and_constraints_to_measures[(data_source_names[0], input_spec.constraint)].append(
-                input_spec.measure_spec
-            )
+            data_sources_and_constraints_to_measures[(data_source_names[0], input_spec.constraint)].append(input_spec)
 
         for (data_source, measure_constraint), measures in data_sources_and_constraints_to_measures.items():
             logger.info(
@@ -518,7 +516,7 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
                 node_where_constraint = where_constraint.combine(measure_constraint)
 
             node = self._build_aggregated_measures_for_single_data_source(
-                measure_specs=tuple(measures),
+                metric_input_measure_specs=tuple(measures),
                 queried_linkable_specs=queried_linkable_specs,
                 where_constraint=node_where_constraint,
                 time_range_constraint=time_range_constraint,
@@ -534,13 +532,13 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
             return FilterElementsNode(
                 parent_node=JoinAggregatedMeasuresByGroupByColumnsNode(parent_nodes=output_nodes),
                 include_specs=LinkableInstanceSpec.merge(
-                    queried_linkable_specs.as_tuple, tuple(x.measure_spec for x in metric_input_measure_specs)
+                    queried_linkable_specs.as_tuple, tuple(x.post_aggregation_spec for x in metric_input_measure_specs)
                 ),
             )
 
     @staticmethod
     def _add_where_and_aggregate(
-        measure_specs: Tuple[MeasureSpec, ...],
+        metric_input_measure_specs: Tuple[MetricInputMeasureSpec, ...],
         queried_linkable_specs: LinkableSpecSet,
         unaggregated_node: BaseOutput[SqlDataSetT],
         where_constraint: SpecWhereClauseConstraint,
@@ -556,7 +554,9 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
         )
 
         if where_constraint.linkable_spec_set.is_subset_of(queried_linkable_specs):
-            return AggregateMeasuresNode[SqlDataSetT](where_constrained_node)
+            return AggregateMeasuresNode[SqlDataSetT](
+                parent_node=where_constrained_node, metric_input_measure_specs=metric_input_measure_specs
+            )
 
         # At this point, it's the case that the linkable specs in the where clause are not a subset of the queried
         # linkable specs. A filter is needed after a where clause so that the linkable specs in the where clause don't
@@ -565,14 +565,16 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
         # e.g. for "bookings" by "ds" where "is_instant", "is_instant" should not be in the results.
         filtered_node = FilterElementsNode(
             parent_node=where_constrained_node,
-            include_specs=measure_specs + queried_linkable_specs.as_tuple,
+            include_specs=tuple(x.measure_spec for x in metric_input_measure_specs) + queried_linkable_specs.as_tuple,
         )
 
-        return AggregateMeasuresNode[SqlDataSetT](parent_node=filtered_node)
+        return AggregateMeasuresNode[SqlDataSetT](
+            parent_node=filtered_node, metric_input_measure_specs=metric_input_measure_specs
+        )
 
     def _build_aggregated_measures_for_single_data_source(
         self,
-        measure_specs: Tuple[MeasureSpec, ...],
+        metric_input_measure_specs: Tuple[MetricInputMeasureSpec, ...],
         queried_linkable_specs: LinkableSpecSet,
         where_constraint: Optional[SpecWhereClauseConstraint] = None,
         time_range_constraint: Optional[TimeRangeConstraint] = None,
@@ -583,6 +585,7 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
         metric_time_dimension_requested = self._metric_time_dimension_reference.element_name in [
             linkable_spec.element_name for linkable_spec in queried_linkable_specs.as_tuple
         ]
+        measure_specs = tuple(x.measure_spec for x in metric_input_measure_specs)
         cumulative_metric_adjusted_time_constraint: Optional[TimeRangeConstraint] = None
         if cumulative and time_range_constraint is not None:
             logger.info(f"Time range constraint before adjustment is {time_range_constraint}")
@@ -712,12 +715,13 @@ class DataflowPlanBuilder(Generic[SqlDataSetT]):
 
         if where_constraint:
             return DataflowPlanBuilder._add_where_and_aggregate(
-                measure_specs=measure_specs,
+                metric_input_measure_specs=metric_input_measure_specs,
                 unaggregated_node=cumulative_metric_constrained_node or unaggregated_measure_node,
                 queried_linkable_specs=queried_linkable_specs,
                 where_constraint=where_constraint,
             )
 
         return AggregateMeasuresNode[SqlDataSetT](
-            parent_node=cumulative_metric_constrained_node or unaggregated_measure_node
+            parent_node=cumulative_metric_constrained_node or unaggregated_measure_node,
+            metric_input_measure_specs=metric_input_measure_specs,
         )
