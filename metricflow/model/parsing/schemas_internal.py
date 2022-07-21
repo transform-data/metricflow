@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
-from jsonschema import RefResolver, Draft7Validator
+from jsonschema import RefResolver
+from metricflow.model.parsing.schema_validator import SchemaValidator
 
 from metricflow.model.parsing.schemas import (
     metric_schema,
@@ -103,7 +104,7 @@ schema_store = {
 }
 
 resolver = RefResolver.from_schema(schema=metric_schema, store=schema_store)
-data_source_validator = Draft7Validator(data_source_schema, resolver=resolver)
-derived_group_by_element_validator = Draft7Validator(derived_group_by_element_schema, resolver=resolver)
-materialization_validator = Draft7Validator(materialization_schema, resolver=resolver)
-metric_validator = Draft7Validator(metric_schema, resolver=resolver)
+data_source_validator = SchemaValidator(data_source_schema, resolver=resolver)
+derived_group_by_element_validator = SchemaValidator(derived_group_by_element_schema, resolver=resolver)
+materialization_validator = SchemaValidator(materialization_schema, resolver=resolver)
+metric_validator = SchemaValidator(metric_schema, resolver=resolver)
