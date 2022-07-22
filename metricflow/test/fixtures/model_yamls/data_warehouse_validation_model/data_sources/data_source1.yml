@@ -21,5 +21,9 @@ data_source:
       agg: sum
       expr: 1
       create_metric: True
+  identifiers:
+    - name: id
+      type: primary
+      expr: "1"
   mutability:
     type: immutable
