@@ -17,11 +17,7 @@ CREATE TABLE ***************************.test_table AS (
       -- User Defined SQL Query
       SELECT * FROM ***************************.fct_bookings
     ) bookings_source_src_0
-    WHERE (
-      ds >= CAST('2000-01-01' AS DATETIME)
-    ) AND (
-      ds <= CAST('2040-12-31' AS DATETIME)
-    )
+    WHERE ds BETWEEN CAST('2000-01-01' AS DATETIME) AND CAST('2040-12-31' AS DATETIME)
   ) subq_3
   GROUP BY
     ds

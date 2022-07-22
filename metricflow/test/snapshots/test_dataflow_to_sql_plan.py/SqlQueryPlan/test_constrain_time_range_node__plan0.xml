@@ -5,18 +5,18 @@
         <!-- node_id = ss_2 -->
         <!-- col0 =                                                  -->
         <!--   {'class': 'SqlSelectColumn',                          -->
-        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_8),  -->
+        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_7),  -->
         <!--    'column_alias': 'ds'}                                -->
         <!-- col1 =                                                  -->
         <!--   {'class': 'SqlSelectColumn',                          -->
-        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_9),  -->
+        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_8),  -->
         <!--    'column_alias': 'metric_time'}                       -->
         <!-- col2 =                                                  -->
         <!--   {'class': 'SqlSelectColumn',                          -->
-        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_7),  -->
+        <!--    'expr': SqlColumnReferenceExpression(node_id=cr_6),  -->
         <!--    'column_alias': 'bookings'}                          -->
         <!-- from_source = SqlSelectStatementNode(node_id=ss_1) -->
-        <!-- where = SqlLogicalExpression(node_id=lo_0) -->
+        <!-- where = SqlBetweenExpression(node_id=betw_0) -->
         <SqlSelectStatementNode>
             <!-- description = Metric Time Dimension 'ds' -->
             <!-- node_id = ss_1 -->

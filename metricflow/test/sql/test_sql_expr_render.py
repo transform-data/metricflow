@@ -20,6 +20,8 @@ from metricflow.sql.sql_exprs import (
     SqlDateTruncExpression,
     SqlRatioComputationExpression,
     SqlColumnReplacements,
+    SqlCastToTimestampExpression,
+    SqlBetweenExpression,
 )
 from metricflow.time.time_granularity import TimeGranularity
 
@@ -215,3 +217,22 @@ def test_expr_rewrite(default_expr_renderer: DefaultSqlExpressionRenderer) -> No
     )
     expr_rewritten = expr.rewrite(column_replacements)
     assert default_expr_renderer.render_sql_expr(expr_rewritten).sql == "foo AND bar"
+
+
+def test_between_expr(default_expr_renderer: DefaultSqlExpressionRenderer) -> None:  # noqa: D
+    actual = default_expr_renderer.render_sql_expr(
+        SqlBetweenExpression(
+            column_arg=SqlColumnReferenceExpression(SqlColumnReference("a", "col0")),
+            left_value=SqlCastToTimestampExpression(
+                arg=SqlStringLiteralExpression(
+                    literal_value="2020-01-01",
+                )
+            ),
+            right_value=SqlCastToTimestampExpression(
+                arg=SqlStringLiteralExpression(
+                    literal_value="2020-01-10",
+                )
+            ),
+        )
+    ).sql
+    assert actual == "a.col0 BETWEEN CAST('2020-01-01' AS TIMESTAMP) AND CAST('2020-01-10' AS TIMESTAMP)"

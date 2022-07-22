@@ -87,6 +87,7 @@ from metricflow.sql.sql_exprs import (
     SqlRatioComputationExpression,
     SqlDateTruncExpression,
     SqlStringLiteralExpression,
+    SqlBetweenExpression,
 )
 from metricflow.sql.sql_plan import (
     SqlQueryPlan,
@@ -319,40 +320,24 @@ def _make_grain_to_date_cumulative_metric_join_condition(
 def _make_time_range_comparison_expr(
     table_alias: str, column_alias: str, time_range_constraint: TimeRangeConstraint
 ) -> SqlExpressionNode:
-    """Build an expression like "ds >= CAST('2020-01-01' AS TIMESTAMP) AND ds <= CAST('2020-01-02' AS TIMESTAMP)"""
-    return SqlLogicalExpression(
-        operator=SqlLogicalOperator.AND,
-        args=(
-            SqlComparisonExpression(
-                left_expr=SqlColumnReferenceExpression(
-                    SqlColumnReference(
-                        table_alias=table_alias,
-                        column_name=column_alias,
-                    )
-                ),
-                comparison=SqlComparison.GREATER_THAN_OR_EQUALS,
-                right_expr=SqlCastToTimestampExpression(
-                    # TODO: Update when adding < day granularity support.
-                    arg=SqlStringLiteralExpression(
-                        literal_value=time_range_constraint.start_time.strftime(ISO8601_PYTHON_FORMAT),
-                    )
-                ),
-            ),
-            SqlComparisonExpression(
-                left_expr=SqlColumnReferenceExpression(
-                    SqlColumnReference(
-                        table_alias=table_alias,
-                        column_name=column_alias,
-                    )
-                ),
-                comparison=SqlComparison.LESS_THAN_OR_EQUALS,
-                right_expr=SqlCastToTimestampExpression(
-                    # TODO: Update when adding < day granularity support.
-                    arg=SqlStringLiteralExpression(
-                        literal_value=time_range_constraint.end_time.strftime(ISO8601_PYTHON_FORMAT),
-                    )
-                ),
-            ),
+    """Build an expression like "ds BETWEEN CAST('2020-01-01' AS TIMESTAMP) AND CAST('2020-01-02' AS TIMESTAMP)"""
+    # TODO: Update when adding < day granularity support.
+    return SqlBetweenExpression(
+        column_arg=SqlColumnReferenceExpression(
+            SqlColumnReference(
+                table_alias=table_alias,
+                column_name=column_alias,
+            )
+        ),
+        left_value=SqlCastToTimestampExpression(
+            arg=SqlStringLiteralExpression(
+                literal_value=time_range_constraint.start_time.strftime(ISO8601_PYTHON_FORMAT),
+            )
+        ),
+        right_value=SqlCastToTimestampExpression(
+            arg=SqlStringLiteralExpression(
+                literal_value=time_range_constraint.end_time.strftime(ISO8601_PYTHON_FORMAT),
+            )
         ),
     )
 

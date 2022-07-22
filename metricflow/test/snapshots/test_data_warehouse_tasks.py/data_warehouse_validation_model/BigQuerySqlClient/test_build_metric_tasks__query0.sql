@@ -15,11 +15,7 @@ FROM (
   FROM (
     SELECT * FROM ***************************.fct_animals
   ) animals_src_0
-  WHERE (
-    ds >= CAST('2000-01-01' AS DATETIME)
-  ) AND (
-    ds <= CAST('2040-12-31' AS DATETIME)
-  )
+  WHERE ds BETWEEN CAST('2000-01-01' AS DATETIME) AND CAST('2040-12-31' AS DATETIME)
 ) subq_3
 GROUP BY
   metric_time

@@ -12,10 +12,6 @@ FROM (
   -- User Defined SQL Query
   SELECT * FROM ***************************.fct_revenue
 ) revenue_src_10005
-WHERE (
-  created_at >= CAST('2019-12-01' AS DATETIME)
-) AND (
-  created_at <= CAST('2020-01-01' AS DATETIME)
-)
+WHERE created_at BETWEEN CAST('2019-12-01' AS DATETIME) AND CAST('2020-01-01' AS DATETIME)
 GROUP BY
   ds__month

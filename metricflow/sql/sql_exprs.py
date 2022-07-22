@@ -21,6 +21,7 @@ from metricflow.dag.id_generation import (
     SQL_EXPR_IS_NULL_PREFIX,
     SQL_EXPR_DATE_TRUNC,
     SQL_EXPR_RATIO_COMPUTATION,
+    SQL_EXPR_BETWEEN_PREFIX,
 )
 from metricflow.sql.sql_bind_parameters import SqlBindParameters
 from metricflow.visitor import Visitable, VisitorOutputT
@@ -209,6 +210,10 @@ class SqlExpressionNodeVisitor(Generic[VisitorOutputT], ABC):
 
     @abstractmethod
     def visit_ratio_computation_expr(self, node: SqlRatioComputationExpression) -> VisitorOutputT:  # noqa: D
+        pass
+
+    @abstractmethod
+    def visit_between_expr(self, node: SqlBetweenExpression) -> VisitorOutputT:  # noqa: D
         pass
 
 
@@ -1142,5 +1147,66 @@ class SqlRatioComputationExpression(SqlExpressionNode):
 
     def matches(self, other: SqlExpressionNode) -> bool:  # noqa: D
         if not isinstance(other, SqlRatioComputationExpression):
+            return False
+        return self._parents_match(other)
+
+
+class SqlBetweenExpression(SqlExpressionNode):
+    """A BETWEEN clause like `column BETWEEN val1 AND val2`"""
+
+    def __init__(  # noqa: D
+        self, column_arg: SqlExpressionNode, left_value: SqlExpressionNode, right_value: SqlExpressionNode
+    ) -> None:
+        self._column_arg = column_arg
+        self._left_value = left_value
+        self._right_value = right_value
+        super().__init__(node_id=self.create_unique_id(), parent_nodes=[column_arg, left_value, right_value])
+
+    @classmethod
+    def id_prefix(cls) -> str:  # noqa: D
+        return SQL_EXPR_BETWEEN_PREFIX
+
+    @property
+    def requires_parenthesis(self) -> bool:  # noqa: D
+        return False
+
+    def accept(self, visitor: SqlExpressionNodeVisitor[VisitorOutputT]) -> VisitorOutputT:  # noqa: D
+        return visitor.visit_between_expr(self)
+
+    @property
+    def description(self) -> str:  # noqa: D
+        return "BETWEEN operator"
+
+    @property
+    def column_arg(self) -> SqlExpressionNode:  # noqa: D
+        return self._column_arg
+
+    @property
+    def left_value(self) -> SqlExpressionNode:  # noqa: D
+        return self._left_value
+
+    @property
+    def right_value(self) -> SqlExpressionNode:  # noqa: D
+        return self._right_value
+
+    def rewrite(  # noqa: D
+        self,
+        column_replacements: Optional[SqlColumnReplacements] = None,
+        should_render_table_alias: Optional[bool] = None,
+    ) -> SqlExpressionNode:
+        return SqlBetweenExpression(
+            column_arg=self.column_arg.rewrite(column_replacements, should_render_table_alias),
+            left_value=self.left_value.rewrite(column_replacements, should_render_table_alias),
+            right_value=self.right_value.rewrite(column_replacements, should_render_table_alias),
+        )
+
+    @property
+    def lineage(self) -> SqlExpressionTreeLineage:  # noqa: D
+        return SqlExpressionTreeLineage.combine(
+            tuple(x.lineage for x in self.parent_nodes) + (SqlExpressionTreeLineage(other_exprs=(self,)),)
+        )
+
+    def matches(self, other: SqlExpressionNode) -> bool:  # noqa: D
+        if not isinstance(other, SqlBetweenExpression):
             return False
         return self._parents_match(other)

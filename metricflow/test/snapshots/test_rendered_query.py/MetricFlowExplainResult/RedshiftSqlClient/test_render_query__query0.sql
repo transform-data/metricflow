@@ -16,11 +16,7 @@ FROM (
     -- User Defined SQL Query
     SELECT * FROM ***************************.fct_bookings
   ) bookings_source_src_0
-  WHERE (
-    ds >= CAST('2000-01-01' AS TIMESTAMP)
-  ) AND (
-    ds <= CAST('2040-12-31' AS TIMESTAMP)
-  )
+  WHERE ds BETWEEN CAST('2000-01-01' AS TIMESTAMP) AND CAST('2040-12-31' AS TIMESTAMP)
 ) subq_3
 GROUP BY
   ds

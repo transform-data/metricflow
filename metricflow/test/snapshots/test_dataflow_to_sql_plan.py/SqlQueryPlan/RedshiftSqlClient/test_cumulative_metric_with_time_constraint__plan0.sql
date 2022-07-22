@@ -59,11 +59,7 @@ FROM (
           ) revenue_src_10005
         ) subq_0
       ) subq_1
-      WHERE (
-        subq_1.metric_time >= CAST('2019-12-01' AS TIMESTAMP)
-      ) AND (
-        subq_1.metric_time <= CAST('2020-01-01' AS TIMESTAMP)
-      )
+      WHERE subq_1.metric_time BETWEEN CAST('2019-12-01' AS TIMESTAMP) AND CAST('2020-01-01' AS TIMESTAMP)
     ) subq_2
   ) subq_4
   GROUP BY
