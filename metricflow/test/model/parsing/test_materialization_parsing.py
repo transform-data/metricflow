@@ -1,9 +1,7 @@
 import textwrap
 
-import pytest
 from metricflow.dataflow.sql_table import SqlTable
 
-from metricflow.errors.errors import ParsingException
 from metricflow.model.objects.common import YamlConfigFile
 from metricflow.model.objects.materialization import (
     MaterializationFormat,
@@ -11,6 +9,7 @@ from metricflow.model.objects.materialization import (
     MaterializationTableauParams,
 )
 from metricflow.model.parsing.dir_to_model import parse_yaml_files_to_model
+from metricflow.model.validations.validator_helpers import ModelValidationException
 
 
 def test_simple_materialization_parsing() -> None:
@@ -28,10 +27,10 @@ def test_simple_materialization_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.name == "simple_materialization_test"
     assert materialization.metrics == ["some_metric"]
     assert materialization.dimensions == ["some_dimension", "time_dimension"]
@@ -52,10 +51,10 @@ def test_materialization_metadata_parsing() -> None:
     )
     file = YamlConfigFile(filepath="test_dir/inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.metadata is not None
     assert materialization.metadata.repo_file_path == "test_dir/inline_for_test"
     assert materialization.metadata.file_slice.filename == "inline_for_test"
@@ -89,10 +88,10 @@ def test_materialization_with_simple_destinations_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.destinations is not None
     assert len(materialization.destinations) == 1
     destination = materialization.destinations[0]
@@ -121,10 +120,10 @@ def test_materialization_with_rollup_destination_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.destinations is not None
     assert len(materialization.destinations) == 1
     destination = materialization.destinations[0]
@@ -155,10 +154,10 @@ def test_materialization_with_indented_rollup_destination_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.destinations is not None
     assert len(materialization.destinations) == 1
     destination = materialization.destinations[0]
@@ -186,10 +185,10 @@ def test_materialization_with_tableau_parameters_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.destinations is not None
     assert len(materialization.destinations) == 1
     destination = materialization.destinations[0]
@@ -214,10 +213,10 @@ def test_materialization_with_destination_table_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.materializations) == 1
-    materialization = model.materializations[0]
+    assert len(build_result.model.materializations) == 1
+    materialization = build_result.model.materializations[0]
     assert materialization.destinations is not None and len(materialization.destinations) == 1
     assert materialization.destination_table is not None
     assert materialization.destination_table == SqlTable(
@@ -243,5 +242,6 @@ def test_materialization_with_invalid_destination_table_parsing_error() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    with pytest.raises(ParsingException, match="Invalid input for a SQL table"):
-        parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
+    assert build_result.issues.has_blocking_issues
+    assert "Invalid input for a SQL table" in str(ModelValidationException(build_result.issues.all_issues))

@@ -6,8 +6,9 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Sequence, Tuple, Optional
 
+import yaml
+
 from metricflow.model.objects.base import FrozenBaseModel
-from metricflow.model.parsing.yaml_loader import YamlConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class ConfiguredIntegrationTestCaseRepository:
 
         with open(file_path) as f:
             file_contents = f.read()
-            for config_document in YamlConfigLoader.load_all_without_context(file_contents):
+            for config_document in yaml.load_all(stream=file_contents, Loader=yaml.SafeLoader):
                 # The config document can be None if there is nothing but white space between two `---`
                 # this isn't really an issue, so lets just swallow it
                 if config_document is None:

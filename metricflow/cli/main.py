@@ -36,7 +36,7 @@ from metricflow.cli.utils import (
 from metricflow.configuration.config_builder import YamlTemplateBuilder
 from metricflow.dataflow.dataflow_plan_to_text import dataflow_plan_as_text
 from metricflow.engine.metricflow_engine import MetricFlowQueryRequest, MetricFlowExplainResult, MetricFlowQueryResult
-from metricflow.engine.utils import path_to_models
+from metricflow.engine.utils import model_build_result_from_config, path_to_models
 from metricflow.model.data_warehouse_model_validator import DataWarehouseModelValidator
 from metricflow.model.model_validator import ModelValidator
 from metricflow.model.objects.user_configured_model import UserConfiguredModel
@@ -640,16 +640,18 @@ def drop_materialization(cfg: CLIContext, materialization_name: str) -> None:
         spinner.warn(f"Materialized table for `{materialization_name}` did not exist, no table was dropped")
 
 
-def _print_issues(issues: ModelValidationResults, show_non_blocking: bool = False) -> None:  # noqa: D
+def _print_issues(
+    issues: ModelValidationResults, show_non_blocking: bool = False, verbose: bool = False
+) -> None:  # noqa: D
     for issue in issues.fatals:
-        print(f"• {issue.as_readable_str()}")
+        print(f"• {issue.as_readable_str(verbose=verbose)}")
     for issue in issues.errors:
-        print(f"• {issue.as_readable_str()}")
+        print(f"• {issue.as_readable_str(verbose=verbose)}")
     if show_non_blocking:
         for issue in issues.future_errors:
-            print(f"• {issue.as_readable_str()}")
+            print(f"• {issue.as_readable_str(verbose=verbose)}")
         for issue in issues.warnings:
-            print(f"• {issue.as_readable_str()}")
+            print(f"• {issue.as_readable_str(verbose=verbose)}")
 
 
 def _run_dw_validations(
@@ -702,11 +704,18 @@ def _data_warehouse_validations_runner(
     help="If specified, skips the data warehouse validations",
 )
 @click.option("--show-all", is_flag=True, default=False, help="If specified, prints warnings and future-errors")
+@click.option(
+    "--verbose-issues", is_flag=True, default=False, help="If specified, prints any extra details issues might have"
+)
 @pass_config
 @exception_handler
 @log_call(module_name=__name__, telemetry_reporter=_telemetry_reporter)
 def validate_configs(
-    cfg: CLIContext, dw_timeout: Optional[int] = None, skip_dw: bool = False, show_all: bool = False
+    cfg: CLIContext,
+    dw_timeout: Optional[int] = None,
+    skip_dw: bool = False,
+    show_all: bool = False,
+    verbose_issues: bool = False,
 ) -> None:
     """Perform validations against the defined model configurations."""
     cfg.verbose = True
@@ -714,6 +723,7 @@ def validate_configs(
     if not show_all:
         print("(To see warnings and future-errors, run again with flag `--show-all`)")
 
+    # Lint Validation
     lint_spinner = Halo(text="Checking for YAML format issues", spinner="dots")
     lint_spinner.start()
 
@@ -722,23 +732,39 @@ def validate_configs(
         lint_spinner.succeed(f"🎉 Successfully linted config YAML files ({lint_results.summary()})")
     else:
         lint_spinner.fail(f"Breaking issues found in config YAML files ({lint_results.summary()})")
-        _print_issues(lint_results, show_non_blocking=show_all)
+        _print_issues(lint_results, show_non_blocking=show_all, verbose=verbose_issues)
         return
 
-    build_spinner = Halo(text="Building model from configs", spinner="dots")
-    build_spinner.start()
+    # Parsing Validation
+    parsing_spinner = Halo(text="Building model from configs", spinner="dots")
+    parsing_spinner.start()
+    parsing_result = model_build_result_from_config(handler=cfg.config, raise_issues_as_exceptions=False)
 
-    # Structural validation, this will throw error if there's an issue.
-    user_model = cfg.user_configured_model
-
-    # Model validation
-    build_result = ModelValidator().validate_model(user_model)
-
-    if not build_result.issues.has_blocking_issues:
-        build_spinner.succeed(f"🎉 Successfully built model from configs ({build_result.issues.summary()})")
+    if not parsing_result.issues.has_blocking_issues:
+        parsing_spinner.succeed(f"🎉 Successfully built model from configs ({parsing_result.issues.summary()})")
     else:
-        build_spinner.fail(f"Breaking issues found when building model from configs ({build_result.issues.summary()})")
-        _print_issues(build_result.issues, show_non_blocking=show_all)
+        parsing_spinner.fail(
+            f"Breaking issues found when building model from configs ({parsing_result.issues.summary()})"
+        )
+        _print_issues(parsing_result.issues, show_non_blocking=show_all, verbose=verbose_issues)
+        return
+
+    user_model = parsing_result.model
+
+    # Semantic validation
+    semantic_spinner = Halo(text="Validating semantics of built model", spinner="dots")
+    semantic_spinner.start()
+    semantic_result = ModelValidator().validate_model(user_model)
+
+    if not semantic_result.issues.has_blocking_issues:
+        semantic_spinner.succeed(
+            f"🎉 Successfully validated the semantics of built model ({semantic_result.issues.summary()})"
+        )
+    else:
+        semantic_spinner.fail(
+            f"Breaking issues found when checking semantics of built model ({semantic_result.issues.summary()})"
+        )
+        _print_issues(semantic_result.issues, show_non_blocking=show_all, verbose=verbose_issues)
         return
 
     dw_results = ModelValidationResults()
@@ -746,8 +772,10 @@ def validate_configs(
         dw_validator = DataWarehouseModelValidator(sql_client=cfg.sql_client, mf_engine=cfg.mf)
         dw_results = _data_warehouse_validations_runner(dw_validator=dw_validator, model=user_model, timeout=dw_timeout)
 
-    merged_results = ModelValidationResults.merge([lint_results, build_result.issues, dw_results])
-    _print_issues(merged_results, show_non_blocking=show_all)
+    merged_results = ModelValidationResults.merge(
+        [lint_results, parsing_result.issues, semantic_result.issues, dw_results]
+    )
+    _print_issues(merged_results, show_non_blocking=show_all, verbose=verbose_issues)
 
 
 if __name__ == "__main__":

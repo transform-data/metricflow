@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
-
 from pydantic import BaseModel, Extra
 
 from metricflow.instances import (
@@ -155,6 +154,7 @@ class ValidationIssue(ABC, BaseModel):
 
     message: str
     context: Optional[ValidationContext] = None
+    extra_detail: Optional[str]
 
     @property
     @abstractmethod
@@ -168,7 +168,7 @@ class ValidationIssue(ABC, BaseModel):
         """Builds the header message with colour."""
         return click.style(level.name, bold=True, fg=ISSUE_COLOR_MAP[level])
 
-    def as_readable_str(self) -> str:
+    def as_readable_str(self, verbose: bool = False) -> str:
         """Return a easily readable string that can be used to log the issue."""
 
         # The following is two lines instead of one line because
@@ -176,7 +176,11 @@ class ValidationIssue(ABC, BaseModel):
         context_str = self.context.context_str() if self.context else ""
         context_str += " - " if context_str != "" else ""
 
-        return f"{ValidationIssue.build_validation_header_msg(self.level)}: {context_str}{self.message}"
+        issue_str = f"{ValidationIssue.build_validation_header_msg(self.level)}: {context_str}{self.message}"
+        if verbose and self.extra_detail is not None:
+            issue_str += f"\n{self.extra_detail}"
+
+        return issue_str
 
 
 class ValidationWarning(ValidationIssue, BaseModel):
@@ -196,10 +200,10 @@ class ValidationFutureError(ValidationIssue, BaseModel):
     def level(self) -> ValidationIssueLevel:  # noqa: D
         return ValidationIssueLevel.FUTURE_ERROR
 
-    def as_readable_str(self) -> str:
+    def as_readable_str(self, verbose: bool = False) -> str:
         """Return a easily readable string that can be used to log the issue."""
         return (
-            f"{super().as_readable_str()}"
+            f"{super().as_readable_str(verbose=verbose)}"
             f"IMPORTANT: this error will break your model starting {self.error_date.strftime('%b %d, %Y')}. "
         )
 
@@ -323,7 +327,8 @@ def generate_exception_issue(
     """Generates a validation issue for exceptions"""
     return ValidationError(
         context=context,
-        message=f"An error occured while {what_was_being_done} - {''.join(traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__))}",
+        message=f"An error occured while {what_was_being_done} - {''.join(traceback.format_exception_only(etype=type(e), value=e))}",
+        extra_detail="".join(traceback.format_tb(e.__traceback__)),
     )
 
 
@@ -384,5 +389,5 @@ class ModelValidationException(Exception):
     """Exception raised when validation of a model fails."""
 
     def __init__(self, issues: Tuple[ValidationIssueType, ...]) -> None:  # noqa: D
-        issues_str = "\n".join([x.as_readable_str() for x in issues])
+        issues_str = "\n".join([x.as_readable_str(verbose=True) for x in issues])
         super().__init__(f"Error validating model. Issues:\n{issues_str}")

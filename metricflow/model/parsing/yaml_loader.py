@@ -54,14 +54,6 @@ class YamlConfigLoader:
                 yield document
 
     @staticmethod
-    def load_all_without_context(contents: str) -> Iterator:
-        """Convenience wrapper for yaml.load_all with the standard yaml.SafeLoader
-
-        This method is here more for readability than anything else.
-        """
-        return yaml.load_all(stream=contents, Loader=yaml.SafeLoader)
-
-    @staticmethod
     def is_valid_yaml_file_ending(filename: str) -> bool:
         """Checks if YAML file name ends with one of the supported suffixes"""
         return filename.endswith(".yaml") or filename.endswith(".yml")

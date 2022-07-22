@@ -2,7 +2,7 @@ import os
 from typing import List, Optional
 import yaml
 from yamllint import config, linter, rules
-from metricflow.model.parsing.validation import METRIC_TYPE, DATA_SOURCE_TYPE, MATERIALIZATION_TYPE
+from metricflow.model.parsing.dir_to_model import METRIC_TYPE, DATA_SOURCE_TYPE, MATERIALIZATION_TYPE
 
 from metricflow.model.validations.validator_helpers import (
     FileContext,

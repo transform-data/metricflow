@@ -26,10 +26,10 @@ def test_base_data_source_attribute_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert data_source.name == "base_property_test"
     assert data_source.origin == DataSourceOrigin.SOURCE  # auto-filled from default, not user-configurable
     assert data_source.mutability.type == MutabilityType.APPEND_ONLY
@@ -52,10 +52,10 @@ def test_data_source_metadata_parsing() -> None:
     )
     file = YamlConfigFile(filepath="test_dir/inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert data_source.metadata is not None
     assert data_source.metadata.repo_file_path == "test_dir/inline_for_test"
     assert data_source.metadata.file_slice.filename == "inline_for_test"
@@ -82,10 +82,10 @@ def test_data_source_sql_table_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert data_source.sql_table == "some_schema.source_table"
 
 
@@ -102,10 +102,10 @@ def test_data_source_sql_query_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert data_source.sql_query == "SELECT * FROM some_schema.source_table"
 
 
@@ -122,10 +122,10 @@ def test_data_source_dbt_model_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert data_source.dbt_model == "dbt_source.some_model"
 
 
@@ -148,10 +148,10 @@ def test_data_source_identifier_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.identifiers) == 1
     identifier = data_source.identifiers[0]
     assert identifier.name == "example_identifier"
@@ -177,10 +177,10 @@ def test_data_source_identifier_default_entity_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.identifiers) == 1
     identifier = data_source.identifiers[0]
     assert identifier.entity == "example_default_entity_identifier"
@@ -205,10 +205,10 @@ def test_data_source_composite_sub_identifier_ref_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.identifiers) == 1
     identifier = data_source.identifiers[0]
     assert len(identifier.identifiers) == 1
@@ -238,10 +238,10 @@ def test_data_source_composite_sub_identifier_expr_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.identifiers) == 1
     identifier = data_source.identifiers[0]
     assert len(identifier.identifiers) == 1
@@ -269,10 +269,10 @@ def test_data_source_measure_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.measures) == 1
     measure = data_source.measures[0]
     assert measure.name == "example_measure"
@@ -298,10 +298,10 @@ def test_data_source_measure_metadata_parsing() -> None:
     )
     file = YamlConfigFile(filepath="test_dir/inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.measures) == 1
     measure = data_source.measures[0]
     assert measure.metadata is not None
@@ -334,10 +334,10 @@ def test_data_source_create_metric_measure_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.measures) == 1
     measure = data_source.measures[0]
     assert measure.create_metric is True
@@ -360,10 +360,10 @@ def test_data_source_categorical_dimension_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.dimensions) == 1
     dimension = data_source.dimensions[0]
     assert dimension.name == "example_categorical_dimension"
@@ -388,10 +388,10 @@ def test_data_source_partition_dimension_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.dimensions) == 1
     dimension = data_source.dimensions[0]
     assert dimension.is_partition is True
@@ -416,10 +416,10 @@ def test_data_source_time_dimension_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.dimensions) == 1
     dimension = data_source.dimensions[0]
     assert dimension.type is DimensionType.TIME
@@ -448,10 +448,10 @@ def test_data_source_primary_time_dimension_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.data_sources) == 1
-    data_source = model.data_sources[0]
+    assert len(build_result.model.data_sources) == 1
+    data_source = build_result.model.data_sources[0]
     assert len(data_source.dimensions) == 1
     dimension = data_source.dimensions[0]
     assert dimension.type is DimensionType.TIME

@@ -1,12 +1,10 @@
 import textwrap
 
-import pytest
-
-from metricflow.errors.errors import ParsingException
 from metricflow.model.objects.common import YamlConfigFile
 from metricflow.model.objects.constraints.where import WhereClauseConstraint
 from metricflow.model.objects.metric import CumulativeMetricWindow, MetricType, MetricInputMeasure
 from metricflow.model.parsing.dir_to_model import parse_yaml_files_to_model
+from metricflow.model.validations.validator_helpers import ModelValidationException
 from metricflow.sql.sql_bind_parameters import SqlBindParameters
 from metricflow.time.time_granularity import TimeGranularity
 
@@ -24,10 +22,10 @@ def test_legacy_measure_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "legacy_test"
     assert metric.type is MetricType.MEASURE_PROXY
     assert metric.type_params.measure == MetricInputMeasure(name="legacy_measure")
@@ -48,10 +46,10 @@ def test_legacy_metric_input_measure_object_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.type_params.measure == MetricInputMeasure(name="legacy_measure_from_object")
 
 
@@ -69,10 +67,10 @@ def test_metric_metadata_parsing() -> None:
     )
     file = YamlConfigFile(filepath="test_dir/inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.metadata is not None
     assert metric.metadata.repo_file_path == "test_dir/inline_for_test"
     assert metric.metadata.file_slice.filename == "inline_for_test"
@@ -102,10 +100,10 @@ def test_ratio_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "ratio_test"
     assert metric.type is MetricType.RATIO
     assert metric.type_params.numerator == MetricInputMeasure(name="numerator_measure")
@@ -129,10 +127,10 @@ def test_ratio_metric_input_measure_object_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.type_params.numerator == MetricInputMeasure(name="numerator_measure_from_object")
     assert metric.type_params.denominator == MetricInputMeasure(name="denominator_measure_from_object")
 
@@ -152,10 +150,10 @@ def test_expr_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "expr_test"
     assert metric.type is MetricType.EXPR
     assert metric.type_params.measures == [
@@ -179,10 +177,10 @@ def test_expr_metric_input_measure_object_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "expr_test"
     assert metric.type is MetricType.EXPR
     assert metric.type_params.measures == [
@@ -206,10 +204,10 @@ def test_cumulative_window_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "cumulative_test"
     assert metric.type is MetricType.CUMULATIVE
     assert metric.type_params.measures == [MetricInputMeasure(name="cumulative_measure")]
@@ -231,10 +229,10 @@ def test_grain_to_date_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "grain_to_date_test"
     assert metric.type is MetricType.CUMULATIVE
     assert metric.type_params.measures == [MetricInputMeasure(name="cumulative_measure")]
@@ -257,10 +255,10 @@ def test_constraint_metric_parsing() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    model = parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
 
-    assert len(model.metrics) == 1
-    metric = model.metrics[0]
+    assert len(build_result.model.metrics) == 1
+    metric = build_result.model.metrics[0]
     assert metric.name == "constraint_test"
     assert metric.type is MetricType.MEASURE_PROXY
     assert metric.constraint == WhereClauseConstraint(
@@ -284,8 +282,9 @@ def test_invalid_metric_type_parsing_error() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    with pytest.raises(ParsingException, match="'this is not a valid type' is not one of"):
-        parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
+    assert build_result.issues.has_blocking_issues
+    assert "'this is not a valid type' is not one of" in str(ModelValidationException(build_result.issues.all_issues))
 
 
 def test_invalid_cumulative_metric_window_format_parsing_error() -> None:
@@ -303,8 +302,9 @@ def test_invalid_cumulative_metric_window_format_parsing_error() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    with pytest.raises(ParsingException, match="Invalid window"):
-        parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
+    assert build_result.issues.has_blocking_issues
+    assert "Invalid window" in str(ModelValidationException(build_result.issues.all_issues))
 
 
 def test_invalid_cumulative_metric_window_granularity_parsing_error() -> None:
@@ -322,8 +322,9 @@ def test_invalid_cumulative_metric_window_granularity_parsing_error() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    with pytest.raises(ParsingException, match="Invalid time granularity"):
-        parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
+    assert build_result.issues.has_blocking_issues
+    assert "Invalid time granularity" in str(ModelValidationException(build_result.issues.all_issues))
 
 
 def test_invalid_cumulative_metric_window_count_parsing_error() -> None:
@@ -341,5 +342,6 @@ def test_invalid_cumulative_metric_window_count_parsing_error() -> None:
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
 
-    with pytest.raises(ParsingException, match="Invalid count"):
-        parse_yaml_files_to_model(files=[file])
+    build_result = parse_yaml_files_to_model(files=[file])
+    assert build_result.issues.has_blocking_issues
+    assert "Invalid count" in str(ModelValidationException(build_result.issues.all_issues))

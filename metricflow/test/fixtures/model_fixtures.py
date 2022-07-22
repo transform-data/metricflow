@@ -136,7 +136,6 @@ def simple_semantic_model_non_ds(template_mapping: Dict[str, str]) -> SemanticMo
     model_build_result = parse_directory_of_yaml_files_to_model(
         os.path.join(os.path.dirname(__file__), "model_yamls/non_ds_model"), template_mapping=template_mapping
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -145,7 +144,6 @@ def simple_semantic_model(template_mapping: Dict[str, str]) -> SemanticModel:  #
     model_build_result = parse_directory_of_yaml_files_to_model(
         os.path.join(os.path.dirname(__file__), "model_yamls/simple_model"), template_mapping=template_mapping
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -163,7 +161,6 @@ def composite_identifier_semantic_model(  # noqa: D
         os.path.join(os.path.dirname(__file__), "model_yamls/composite_identifier_model"),
         template_mapping=template_mapping,
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -181,7 +178,6 @@ def multi_hop_join_semantic_model(mf_test_session_state: MetricFlowTestSessionSt
         os.path.join(os.path.dirname(__file__), "model_yamls/multi_hop_join_model/partitioned_data_sources"),
         template_mapping=template_mapping,
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -201,7 +197,6 @@ def unpartitioned_multi_hop_join_semantic_model(  # noqa: D
         os.path.join(os.path.dirname(__file__), "model_yamls/multi_hop_join_model/unpartitioned_data_sources"),
         template_mapping=template_mapping,
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -212,7 +207,6 @@ def simple_user_configured_model(template_mapping: Dict[str, str]) -> UserConfig
     model_build_result = parse_directory_of_yaml_files_to_model(
         os.path.join(os.path.dirname(__file__), "model_yamls/simple_model"), template_mapping=template_mapping
     )
-    assert model_build_result.model
     return model_build_result.model
 
 
@@ -226,7 +220,6 @@ def simple_model__pre_transforms(template_mapping: Dict[str, str]) -> UserConfig
         apply_pre_transformations=True,
         apply_post_transformations=False,
     )
-    assert model_build_result.model
     return model_build_result.model
 
 
@@ -242,7 +235,6 @@ def extended_date_semantic_model(mf_test_session_state: MetricFlowTestSessionSta
         os.path.join(os.path.dirname(__file__), "model_yamls/extended_date_model"),
         template_mapping=template_mapping,
     )
-    assert model_build_result.model
     return SemanticModel(model_build_result.model)
 
 
@@ -254,7 +246,6 @@ def data_warehouse_validation_model(template_mapping: Dict[str, str]) -> UserCon
         os.path.join(os.path.dirname(__file__), "model_yamls/data_warehouse_validation_model"),
         template_mapping=template_mapping,
     )
-    assert model_build_result.model
     return model_build_result.model
 
 
