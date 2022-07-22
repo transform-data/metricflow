@@ -1,0 +1,29 @@
+data_source:
+  name: shopify_inventory_level
+  owners:
+    - support@transformdata.io
+  sql_table: SHOPIFY.INVENTORY_LEVEL ### Update to your inventory_level schema.table
+  mutability:
+    type: full_mutation
+    type_params:
+      update_cron: 0 2 * * *
+  identifiers:
+    - name: inventory_item
+      type: primary
+      expr: inventory_item_id
+  dimensions:
+    - name: ds
+      type: time
+      type_params:
+        is_primary: True
+        time_granularity: day
+      expr: updated_at::date # Casting to date using Snowflake syntax. Update as needed based on your warehouse.
+  measures:
+    - name: total_inventory_quantity
+      agg: sum
+      expr: available
+      create_metric: true
+    - name: avg_inventory_quantity
+      agg: average
+      expr: available
+      create_metric: true

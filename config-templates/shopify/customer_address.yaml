@@ -1,0 +1,23 @@
+data_source:
+  name: shopify_customers_addresses
+  owners:
+    - support@transformdata.io
+  sql_table: SHOPIFY.CUSTOMER_ADDRESS ### Update to your customer_address schema.table
+  mutability:
+    type: full_mutation
+    type_params:
+      update_cron: 0 2 * * *
+  identifiers:
+    - name: customer_address
+      type: primary
+      expr: id
+    - name: customer
+      type: foreign
+      expr: customer_id
+  dimensions:
+    - name: country
+      type: categorical
+    - name: province
+      type: categorical
+    - name: zip
+      type: categorical

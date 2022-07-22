@@ -1,0 +1,44 @@
+data_source:
+  name: shopify_inventory_item
+  owners:
+    - support@transformdata.io
+  sql_table: SHOPIFY.INVENTORY_ITEM ### Update to your inventory_item schema.table
+  mutability:
+    type: full_mutation
+    type_params:
+      update_cron: 0 2 * * *
+  identifiers:
+    - name: inventory_item
+      type: primary
+      expr: id
+  dimensions:
+    - name: ds
+      type: time
+      type_params:
+        is_primary: True
+        time_granularity: day
+      expr: created_at::date # Casting to date using Snowflake syntax. Update as needed based on your warehouse.
+    - name: country_code_of_origin
+      type: categorical
+    - name: province_code_of_origin
+      type: categorical
+  measures:
+    - name: total_cost
+      agg: sum
+      expr: cost
+      create_metric: true
+    - name: total_unique_items
+      agg: sum
+      expr: 1
+      create_metric: true
+
+---
+metric:
+  name: mtd_total_cost
+  owners:
+    - hesham@transformdata.io
+  type: cumulative
+  type_params:
+    measures:
+      - total_cost
+    window: 1 month
