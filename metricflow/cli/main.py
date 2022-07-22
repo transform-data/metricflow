@@ -743,7 +743,7 @@ def validate_configs(
 
     dw_results = ModelValidationResults()
     if not skip_dw:
-        dw_validator = DataWarehouseModelValidator(sql_client=cfg.sql_client, mf_engine=cfg.mf)
+        dw_validator = DataWarehouseModelValidator(sql_client=cfg.sql_client, system_schema=cfg.mf_system_schema)
         dw_results = _data_warehouse_validations_runner(dw_validator=dw_validator, model=user_model, timeout=dw_timeout)
 
     merged_results = ModelValidationResults.merge([lint_results, build_result.issues, dw_results])
