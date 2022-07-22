@@ -11,6 +11,7 @@ from metricflow.model.data_warehouse_model_validator import (
 from metricflow.model.model_transformer import ModelTransformer
 from metricflow.model.objects.data_source import Mutability, MutabilityType
 from metricflow.model.objects.elements.dimension import Dimension, DimensionType
+from metricflow.model.objects.elements.identifier import Identifier, IdentifierType
 from metricflow.model.objects.elements.measure import AggregationType, Measure
 from metricflow.model.objects.user_configured_model import UserConfiguredModel
 from metricflow.protocols.sql_client import SqlClient
@@ -126,6 +127,44 @@ def test_validate_dimensions(  # noqa: D
     issues = dw_validator.validate_dimensions(model)
     # One isssue is created for the short circuit query failure, and another is
     # created for the sub task checking the specific dimension
+    assert len(issues.all_issues) == 2
+
+
+def test_build_identifiers_tasks(  # noqa: D
+    data_warehouse_validation_model: UserConfiguredModel,
+    sql_client: SqlClient,
+    mf_test_session_state: MetricFlowTestSessionState,
+) -> None:
+    tasks = DataWarehouseTaskBuilder.gen_identifier_tasks(
+        model=data_warehouse_validation_model,
+        sql_client=sql_client,
+        system_schema=mf_test_session_state.mf_system_schema,
+    )
+    assert len(tasks) == 1  # on data source query with all identifiers
+    assert len(tasks[0].on_fail_subtasks) == 1  # a sub task for each identifier on the data source
+
+
+def test_validate_identifiers(  # noqa: D
+    data_warehouse_validation_model: UserConfiguredModel,
+    sql_client: SqlClient,
+    mf_test_session_state: MetricFlowTestSessionState,
+) -> None:
+    model = deepcopy(data_warehouse_validation_model)
+
+    dw_validator = DataWarehouseModelValidator(
+        sql_client=sql_client, system_schema=mf_test_session_state.mf_system_schema
+    )
+
+    issues = dw_validator.validate_identifiers(model)
+    assert len(issues.all_issues) == 0
+
+    identifiers = list(model.data_sources[0].identifiers)
+    identifiers.append(Identifier(name="doesnt_exist", type=IdentifierType.UNIQUE))
+    model.data_sources[0].identifiers = identifiers
+
+    issues = dw_validator.validate_identifiers(model)
+    # One isssue is created for the short circuit query failure, and another is
+    # created for the sub task checking the specific identifier
     assert len(issues.all_issues) == 2
 
 
