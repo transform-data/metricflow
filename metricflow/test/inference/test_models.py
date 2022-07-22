@@ -1,4 +1,4 @@
-from metricflow.inference.rule.base import InferenceSignalType
+from metricflow.inference.models import InferenceSignalType
 
 
 def test_inference_type_node_conflict():
