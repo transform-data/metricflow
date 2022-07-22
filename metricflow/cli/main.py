@@ -684,11 +684,14 @@ def _data_warehouse_validations_runner(
     dimension_results = _run_dw_validations(
         dw_validator.validate_dimensions, model=model, validation_type="dimensions", timeout=timeout
     )
+    measure_results = _run_dw_validations(
+        dw_validator.validate_measures, model=model, validation_type="measures", timeout=timeout
+    )
     metric_results = _run_dw_validations(
         dw_validator.validate_metrics, model=model, validation_type="metrics", timeout=timeout
     )
 
-    return ModelValidationResults.merge([data_source_results, dimension_results, metric_results])
+    return ModelValidationResults.merge([data_source_results, dimension_results, measure_results, metric_results])
 
 
 @cli.command()

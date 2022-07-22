@@ -35,7 +35,7 @@ from metricflow.plan_conversion.column_resolver import DefaultColumnAssociationR
 from metricflow.plan_conversion.dataflow_to_sql import DataflowToSqlQueryPlanConverter
 from metricflow.plan_conversion.time_spine import TimeSpineSource
 from metricflow.protocols.sql_client import SqlClient
-from metricflow.specs import DimensionSpec, TimeDimensionSpec
+from metricflow.specs import DimensionSpec, MeasureSpec, TimeDimensionSpec
 from metricflow.sql.sql_bind_parameters import SqlBindParameters
 
 
@@ -217,6 +217,72 @@ class DataWarehouseTaskBuilder:
                 )
         return tasks
 
+    @classmethod
+    def gen_measure_tasks(
+        cls, model: UserConfiguredModel, sql_client: SqlClient, system_schema: str
+    ) -> List[DataWarehouseValidationTask]:
+        """Generates a list of tasks for validating the measures of the model
+
+        The high level tasks returned are "short cut" queries which try to
+        query all the measures for a given data source. If that query fails,
+        one or more of the measures is incorrectly specified. Thus if the
+        query fails, there are subtasks which query the individual measures
+        on the data source to identify which have issues.
+        """
+
+        render_tools = QueryRenderingTools(model=model, system_schema=system_schema)
+
+        tasks: List[DataWarehouseValidationTask] = []
+        for data_source in model.data_sources:
+            if len(data_source.measures) > 0:
+                source_node = cls._data_source_node(render_tools=render_tools, data_source=data_source)
+
+                data_source_sub_tasks: List[DataWarehouseValidationTask] = []
+                data_source_specs: List[MeasureSpec] = []
+                for measure in data_source.measures:
+                    spec = MeasureSpec.from_name(name=measure.name)
+                    data_source_specs.append(spec)
+                    filter_elements_node = FilterElementsNode(parent_node=source_node, include_specs=[spec])
+                    data_source_sub_tasks.append(
+                        DataWarehouseValidationTask(
+                            query_and_params_callable=partial(
+                                cls.renderize,
+                                sql_client=sql_client,
+                                plan_converter=render_tools.plan_converter,
+                                plan_id=f"{data_source.name}_measure_{measure.name}_validation",
+                                nodes=filter_elements_node,
+                            ),
+                            context=DataSourceElementContext(
+                                file_context=FileContext.from_metadata(metadata=data_source.metadata),
+                                data_source_element=DataSourceElementReference(
+                                    data_source_name=data_source.name, element_name=measure.name
+                                ),
+                                element_type=DataSourceElementType.MEASURE,
+                            ),
+                            error_message=f"Unable to query measure `{measure.name}` on data source `{data_source.name}` in data warehouse",
+                        )
+                    )
+
+                filter_elements_node = FilterElementsNode(parent_node=source_node, include_specs=data_source_specs)
+                tasks.append(
+                    DataWarehouseValidationTask(
+                        query_and_params_callable=partial(
+                            cls.renderize,
+                            sql_client=sql_client,
+                            plan_converter=render_tools.plan_converter,
+                            plan_id=f"{data_source.name}_all_measures_validation",
+                            nodes=filter_elements_node,
+                        ),
+                        context=DataSourceContext(
+                            file_context=FileContext.from_metadata(metadata=data_source.metadata),
+                            data_source=DataSourceReference(data_source_name=data_source.name),
+                        ),
+                        error_message=f"Failed to query measures in data warehouse for data source `{data_source.name}`",
+                        on_fail_subtasks=data_source_sub_tasks,
+                    )
+                )
+        return tasks
+
     @staticmethod
     def _gen_metric_task_query_and_params(
         metric: Metric, mf_engine: MetricFlowEngine
@@ -340,6 +406,21 @@ class DataWarehouseModelValidator:
             A list of validation issues. If there are no validation issues, an empty list is returned.
         """
         tasks = DataWarehouseTaskBuilder.gen_dimension_tasks(
+            model=model, sql_client=self._sql_client, system_schema=self._sql_schema
+        )
+        return self.run_tasks(tasks=tasks, timeout=timeout)
+
+    def validate_measures(self, model: UserConfiguredModel, timeout: Optional[int] = None) -> ModelValidationResults:
+        """Generates a list of tasks for validating the measures of the model and then runs them
+
+        Args:
+            model: Model which to run data warehouse validations on
+            timeout: An optional timeout. Default is None. When the timeout is hit, function will return early.
+
+        Returns:
+            A list of validation issues. If there are no validation issues, an empty list is returned.
+        """
+        tasks = DataWarehouseTaskBuilder.gen_measure_tasks(
             model=model, sql_client=self._sql_client, system_schema=self._sql_schema
         )
         return self.run_tasks(tasks=tasks, timeout=timeout)

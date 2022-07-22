@@ -129,6 +129,44 @@ def test_validate_dimensions(  # noqa: D
     assert len(issues.all_issues) == 2
 
 
+def test_build_measure_tasks(  # noqa: D
+    data_warehouse_validation_model: UserConfiguredModel,
+    sql_client: SqlClient,
+    mf_test_session_state: MetricFlowTestSessionState,
+) -> None:
+    tasks = DataWarehouseTaskBuilder.gen_measure_tasks(
+        model=data_warehouse_validation_model,
+        sql_client=sql_client,
+        system_schema=mf_test_session_state.mf_system_schema,
+    )
+    assert len(tasks) == 1  # on data source query with all measures
+    assert len(tasks[0].on_fail_subtasks) == 1  # a sub task for each measure on the data source
+
+
+def test_validate_measures(  # noqa: D
+    data_warehouse_validation_model: UserConfiguredModel,
+    sql_client: SqlClient,
+    mf_test_session_state: MetricFlowTestSessionState,
+) -> None:
+    model = deepcopy(data_warehouse_validation_model)
+
+    dw_validator = DataWarehouseModelValidator(
+        sql_client=sql_client, system_schema=mf_test_session_state.mf_system_schema
+    )
+
+    issues = dw_validator.validate_measures(model)
+    assert len(issues.all_issues) == 0
+
+    measures = list(model.data_sources[0].measures)
+    measures.append(Measure(name="doesnt_exist", agg=AggregationType.SUM, agg_time_dimension="ds"))
+    model.data_sources[0].measures = measures
+
+    issues = dw_validator.validate_measures(model)
+    # One isssue is created for the short circuit query failure, and another is
+    # created for the sub task checking the specific measure
+    assert len(issues.all_issues) == 2
+
+
 def test_build_metric_tasks(  # noqa: D
     request: FixtureRequest,
     data_warehouse_validation_model: UserConfiguredModel,
