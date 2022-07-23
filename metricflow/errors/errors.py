@@ -95,3 +95,7 @@ class ModelCreationException(Exception):
         super().__init__(
             "An error occurred when attempting to build the semantic model",
         )
+
+
+class InferenceError(Exception):
+    """Exception to represent errors related to inference."""
