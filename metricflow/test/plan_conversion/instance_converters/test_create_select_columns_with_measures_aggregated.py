@@ -6,6 +6,7 @@ from metricflow.plan_conversion.instance_converters import (
     FilterElements,
 )
 from metricflow.plan_conversion.select_column_gen import SelectColumnSet
+from metricflow.specs import MeasureSpec, MetricInputMeasureSpec
 from metricflow.sql.sql_exprs import (
     SqlFunction,
     SqlFunctionExpression,
@@ -39,6 +40,7 @@ def test_sum_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="booking_value")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -60,6 +62,7 @@ def test_sum_boolean_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="instant_bookings")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -82,6 +85,7 @@ def test_avg_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="average_booking_value")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -103,6 +107,7 @@ def test_count_distinct_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="bookers")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -124,6 +129,7 @@ def test_max_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="largest_listing")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -145,6 +151,7 @@ def test_min_aggregation(
         __SOURCE_TABLE_ALIAS,
         DefaultColumnAssociationResolver(simple_semantic_model),
         simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="smallest_listing")),),
     ).transform(instance_set=instance_set)
 
     assert len(select_column_set.measure_columns) == 1
@@ -152,3 +159,26 @@ def test_min_aggregation(
     expr = measure_column.expr
     assert isinstance(expr, SqlFunctionExpression)
     assert expr.sql_function == SqlFunction.MIN
+
+
+def test_aliased_sum(
+    consistent_id_object_repository: ConsistentIdObjectRepository,
+    simple_semantic_model: SemanticModel,
+) -> None:
+    """Checks for function expression handling for booking_value, a SUM type metric in the simple model, with an alias"""
+    measure_name = "booking_value"
+    instance_set = __get_filtered_measure_instance_set("bookings_source", measure_name, consistent_id_object_repository)
+
+    select_column_set: SelectColumnSet = CreateSelectColumnsWithMeasuresAggregated(
+        __SOURCE_TABLE_ALIAS,
+        DefaultColumnAssociationResolver(simple_semantic_model),
+        simple_semantic_model.data_source_semantics,
+        (MetricInputMeasureSpec(measure_spec=MeasureSpec(element_name="booking_value"), alias="bvalue"),),
+    ).transform(instance_set=instance_set)
+
+    assert len(select_column_set.measure_columns) == 1
+    measure_column = select_column_set.measure_columns[0]
+    expr = measure_column.expr
+    assert isinstance(expr, SqlFunctionExpression)
+    assert expr.sql_function == SqlFunction.SUM
+    assert measure_column.column_alias == "bvalue"

@@ -8,7 +8,19 @@ from moz_sql_parser import parse as moz_parse
 
 from metricflow.errors.errors import ConstraintParseException
 from metricflow.model.objects.base import HashableBaseModel, PydanticCustomInputParser
+from metricflow.model.objects.elements.dimension import DimensionType
+from metricflow.model.semantics import semantic_containers
+from metricflow.naming.linkable_spec_name import StructuredLinkableSpecName
+from metricflow.query.query_exceptions import InvalidQueryException
+from metricflow.specs import (
+    DimensionSpec,
+    IdentifierSpec,
+    LinkableSpecSet,
+    SpecWhereClauseConstraint,
+    TimeDimensionSpec,
+)
 from metricflow.sql.sql_bind_parameters import SqlBindParameters
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +109,65 @@ class WhereClauseConstraint(PydanticCustomInputParser, HashableBaseModel):
             )
         else:
             raise TypeError(f"where-clause is neither a dict nor a string. Unexpectedly it is a {type(where)}")
+
+    def to_spec_where_constraint(
+        self,
+        data_source_semantics: semantic_containers.DataSourceSemantics,
+    ) -> SpecWhereClauseConstraint:
+        """Converts a where constraint to one using specs."""
+        return SpecWhereClauseConstraint(
+            where_condition=self.where,
+            linkable_names=tuple(self.linkable_names),
+            linkable_spec_set=self._names_to_linkable_specs(
+                data_source_semantics=data_source_semantics,
+            ),
+            execution_parameters=self.sql_params,
+        )
+
+    def _names_to_linkable_specs(
+        self,
+        data_source_semantics: semantic_containers.DataSourceSemantics,
+    ) -> LinkableSpecSet:
+        """Processes where_clause_constraint.linkable_names into associated LinkableInstanceSpecs (dims, times, ids)
+
+        data_source_semantics: DataSourceSemantics from the instantiated class
+
+        output: InstanceSpecSet of Tuple(DimensionSpec), Tuple(TimeDimensionSpec), Tuple(IdentifierSpec)
+        """
+        where_constraint_dimensions = []
+        where_constraint_time_dimensions = []
+        where_constraint_identifiers = []
+        linkable_spec_names = [
+            StructuredLinkableSpecName.from_name(linkable_name) for linkable_name in self.linkable_names
+        ]
+        dimension_references = {
+            dimension_reference.element_name: dimension_reference
+            for dimension_reference in data_source_semantics.get_dimension_references()
+        }
+        identifier_references = {
+            identifier_reference.element_name: identifier_reference
+            for identifier_reference in data_source_semantics.get_identifier_references()
+        }
+
+        for spec_name in linkable_spec_names:
+            if spec_name.element_name in dimension_references:
+                dimension = data_source_semantics.get_dimension(dimension_references[spec_name.element_name])
+                if dimension.type == DimensionType.CATEGORICAL:
+                    where_constraint_dimensions.append(DimensionSpec.from_name(spec_name.qualified_name))
+                elif dimension.type == DimensionType.TIME:
+                    where_constraint_time_dimensions.append(TimeDimensionSpec.from_name(spec_name.qualified_name))
+                else:
+                    raise RuntimeError(f"Unhandled type: {dimension.type}")
+            elif spec_name.element_name in identifier_references:
+                where_constraint_identifiers.append(IdentifierSpec.from_name(spec_name.qualified_name))
+            else:
+                raise InvalidQueryException(f"Unknown element: {spec_name}")
+
+        return LinkableSpecSet(
+            dimension_specs=tuple(where_constraint_dimensions),
+            time_dimension_specs=tuple(where_constraint_time_dimensions),
+            identifier_specs=tuple(where_constraint_identifiers),
+        )
 
     def __repr__(self) -> str:  # noqa: D
         return f"{self.__class__.__name__}" f"(where={self.where}, linkable_names={self.linkable_names})"

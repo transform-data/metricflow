@@ -71,6 +71,8 @@ metric_input_measure_schema = {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
+                "constraint": {"type": "string"},
+                "alias": {"type": "string"},
             },
             "additionalProperties": False,
         },

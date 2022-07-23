@@ -13,6 +13,7 @@ from metricflow.specs import (
     IdentifierSpec,
     DimensionSpec,
     LinklessIdentifierSpec,
+    MetricInputMeasureSpec,
 )
 from metricflow.test.fixtures.model_fixtures import ConsistentIdObjectRepository
 
@@ -23,12 +24,13 @@ def test_costing(consistent_id_object_repository: ConsistentIdObjectRepository) 
     bookings_node = consistent_id_object_repository.simple_model_read_nodes["bookings_source"]
     listings_node = consistent_id_object_repository.simple_model_read_nodes["listings_latest"]
 
+    bookings_spec = MeasureSpec(
+        element_name="bookings",
+    )
     bookings_filtered = FilterElementsNode[DataSourceDataSet](
         parent_node=bookings_node,
         include_specs=[
-            MeasureSpec(
-                element_name="bookings",
-            ),
+            bookings_spec,
             IdentifierSpec(
                 element_name="listing",
                 identifier_links=(),
@@ -62,7 +64,9 @@ def test_costing(consistent_id_object_repository: ConsistentIdObjectRepository) 
         ],
     )
 
-    bookings_aggregated = AggregateMeasuresNode[DataSourceDataSet](parent_node=join_node)
+    bookings_aggregated = AggregateMeasuresNode[DataSourceDataSet](
+        parent_node=join_node, metric_input_measure_specs=(MetricInputMeasureSpec(measure_spec=bookings_spec),)
+    )
 
     cost_function = DefaultCostFunction[DataSourceDataSet]()
     cost = cost_function.calculate_cost(bookings_aggregated)

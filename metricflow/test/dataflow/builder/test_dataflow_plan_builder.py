@@ -532,3 +532,59 @@ def test_distinct_values_plan(  # noqa: D
         mf_test_session_state=mf_test_session_state,
         dag_graph=dataflow_plan,
     )
+
+
+def test_measure_constraint_plan(
+    request: FixtureRequest,
+    mf_test_session_state: MetricFlowTestSessionState,
+    dataflow_plan_builder: DataflowPlanBuilder[DataSourceDataSet],
+) -> None:
+    """Tests a plan for querying a metric with a constraint on one or more of its input measures."""
+    dataflow_plan = dataflow_plan_builder.build_plan(
+        MetricFlowQuerySpec(
+            metric_specs=(MetricSpec(element_name="lux_booking_value_rate_expr"),),
+            dimension_specs=(),
+            time_dimension_specs=(MTD_SPEC_DAY,),
+        ),
+    )
+
+    assert_plan_snapshot_text_equal(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        plan=dataflow_plan,
+        plan_snapshot_text=dataflow_plan_as_text(dataflow_plan),
+    )
+
+    display_graph_if_requested(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        dag_graph=dataflow_plan,
+    )
+
+
+def test_measure_constraint_with_reused_measure_plan(
+    request: FixtureRequest,
+    mf_test_session_state: MetricFlowTestSessionState,
+    dataflow_plan_builder: DataflowPlanBuilder[DataSourceDataSet],
+) -> None:
+    """Tests a plan for querying a metric with a constraint on one or more of its input measures."""
+    dataflow_plan = dataflow_plan_builder.build_plan(
+        MetricFlowQuerySpec(
+            metric_specs=(MetricSpec(element_name="instant_booking_value_ratio"),),
+            dimension_specs=(),
+            time_dimension_specs=(MTD_SPEC_DAY,),
+        ),
+    )
+
+    assert_plan_snapshot_text_equal(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        plan=dataflow_plan,
+        plan_snapshot_text=dataflow_plan_as_text(dataflow_plan),
+    )
+
+    display_graph_if_requested(
+        request=request,
+        mf_test_session_state=mf_test_session_state,
+        dag_graph=dataflow_plan,
+    )

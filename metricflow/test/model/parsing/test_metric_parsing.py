@@ -44,6 +44,7 @@ def test_legacy_metric_input_measure_object_parsing() -> None:
           type_params:
             measure:
               name: legacy_measure_from_object
+              constraint: some_bool
         """
     )
     file = YamlConfigFile(filepath="inline_for_test", contents=yaml_contents)
@@ -52,7 +53,12 @@ def test_legacy_metric_input_measure_object_parsing() -> None:
 
     assert len(model.metrics) == 1
     metric = model.metrics[0]
-    assert metric.type_params.measure == MetricInputMeasure(name="legacy_measure_from_object")
+    assert metric.type_params.measure == MetricInputMeasure(
+        name="legacy_measure_from_object",
+        constraint=WhereClauseConstraint(
+            where="some_bool", linkable_names=["some_bool"], sql_params=SqlBindParameters()
+        ),
+    )
 
 
 def test_metric_metadata_parsing() -> None:
@@ -123,6 +129,7 @@ def test_ratio_metric_input_measure_object_parsing() -> None:
           type_params:
             numerator:
               name: numerator_measure_from_object
+              constraint: "WHERE some_number > 5"
             denominator:
               name: denominator_measure_from_object
         """
@@ -133,7 +140,12 @@ def test_ratio_metric_input_measure_object_parsing() -> None:
 
     assert len(model.metrics) == 1
     metric = model.metrics[0]
-    assert metric.type_params.numerator == MetricInputMeasure(name="numerator_measure_from_object")
+    assert metric.type_params.numerator == MetricInputMeasure(
+        name="numerator_measure_from_object",
+        constraint=WhereClauseConstraint(
+            where="some_number > 5", linkable_names=["some_number"], sql_params=SqlBindParameters()
+        ),
+    )
     assert metric.type_params.denominator == MetricInputMeasure(name="denominator_measure_from_object")
 
 
@@ -174,6 +186,7 @@ def test_expr_metric_input_measure_object_parsing() -> None:
           type_params:
             measures:
               - name: measure_one_from_object
+                constraint: some_bool
               - name: measure_two_from_object
         """
     )
@@ -186,7 +199,12 @@ def test_expr_metric_input_measure_object_parsing() -> None:
     assert metric.name == "expr_test"
     assert metric.type is MetricType.EXPR
     assert metric.type_params.measures == [
-        MetricInputMeasure(name="measure_one_from_object"),
+        MetricInputMeasure(
+            name="measure_one_from_object",
+            constraint=WhereClauseConstraint(
+                where="some_bool", linkable_names=["some_bool"], sql_params=SqlBindParameters()
+            ),
+        ),
         MetricInputMeasure(name="measure_two_from_object"),
     ]
 
