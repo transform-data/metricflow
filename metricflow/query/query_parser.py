@@ -318,7 +318,12 @@ class MetricFlowQueryParser:
                 f"{time_constraint_start.isoformat()}"
             )
 
-        time_constraint = TimeRangeConstraint(start_time=time_constraint_start, end_time=time_constraint_end)
+        time_constraint: Optional[TimeRangeConstraint] = TimeRangeConstraint(
+            start_time=time_constraint_start, end_time=time_constraint_end
+        )
+        if time_constraint == TimeRangeConstraint.all_time():
+            # If the time constraint is all time, just ignore and not render
+            time_constraint = None
 
         requested_linkable_specs = self._parse_linkable_element_names(group_by_names, metric_specs)
         partial_time_dimension_spec_replacements = (
